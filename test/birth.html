@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday!</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        .instruction {
+            margin-bottom: 20px;
+            color: #555;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: opacity 0.5s;
+        }
+
+        /* ギフトボックス全体 */
+        .gift-box {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            cursor: pointer;
+            perspective: 1000px;
+            margin: 0 auto;
+        }
+
+        /* 箱の本体 */
+        .box-body {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 180px;
+            background: #ff6b81;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+
+        /* 箱の蓋 */
+        .box-lid {
+            position: absolute;
+            top: 50px;
+            left: -5px;
+            width: 260px;
+            height: 50px;
+            background: #ff4757;
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            z-index: 4;
+            transform-origin: top;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), top 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 縦のリボン */
+        .ribbon-vertical {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 100%;
+            background: #ffa502;
+            z-index: 3;
+        }
+
+        /* 蝶々結び・リボンの端（紐の端） */
+        .ribbon-bow {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90px;
+            height: 40px;
+            z-index: 5;
+            transition: transform 0.5s ease, opacity 0.5s ease;
+        }
+
+        .bow-loop-left, .bow-loop-right {
+            position: absolute;
+            width: 40px;
+            height: 30px;
+            border: 6px solid #ffa502;
+            border-radius: 50% 50% 0 50%;
+            top: -15px;
+        }
+
+        .bow-loop-left {
+            left: 0;
+            transform: rotate(-30deg);
+        }
+
+        .bow-loop-right {
+            right: 0;
+            transform: scaleX(-1) rotate(-30deg);
+        }
+
+        /* 引く紐の端 */
+        .ribbon-ends {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 5;
+            cursor: pointer;
+        }
+
+        .string {
+            width: 6px;
+            height: 50px;
+            background: #ffa502;
+            border-radius: 3px;
+            transform-origin: top;
+            transition: transform 0.6s ease, opacity 0.6s ease;
+        }
+
+        .string.left {
+            transform: rotate(15deg);
+        }
+
+        .string.right {
+            transform: rotate(-15deg);
+        }
+
+        /* 開いた後のメッセージカード */
+        .message-card {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.5);
+            width: 220px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            z-index: 1;
+            opacity: 0;
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s, opacity 0.6s ease 0.4s;
+            text-align: center;
+        }
+
+        .message-card h2 {
+            color: #ff4757;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        .message-card p {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        /* --- アニメーション発動時のクラス --- */
+        .gift-box.opened .ribbon-bow,
+        .gift-box.opened .string.left,
+        .gift-box.opened .string.right {
+            transform: translateY(60px) scale(0);
+            opacity: 0;
+        }
+
+        .gift-box.opened .box-lid {
+            transform: rotateX(110deg) translateY(-20px);
+            top: 10px;
+        }
+
+        .gift-box.opened .message-card {
+            transform: translateX(-50%) translateY(-60px) scale(1);
+            opacity: 1;
+            z-index: 6;
+        }
+
+        .gift-box.opened + .instruction {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="instruction">リボンの端をクリックして紐を引いてね！</div>
+        
+        <div class="gift-box" id="giftBox" onclick="openBox()">
+            <!-- 飛び出すメッセージカード -->
+            <div class="message-card">
+                <h2>Happy Birthday!</h2>
+                <p>素敵な一年になりますように。<br>お誕生日おめでとう！</p>
+            </div>
+
+            <!-- 箱の構造 -->
+            <div class="box-body">
+                <div class="ribbon-vertical"></div>
+            </div>
+            <div class="box-lid">
+                <div class="ribbon-vertical"></div>
+            </div>
+
+            <!-- 蝶々結びと紐の端 -->
+            <div class="ribbon-bow">
+                <div class="bow-loop-left"></div>
+                <div class="bow-loop-right"></div>
+            </div>
+            <div class="ribbon-ends">
+                <div class="string left"></div>
+                <div class="string right"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isOpened = false;
+
+        function openBox() {
+            if (isOpened) return;
+            isOpened = true;
+
+            const giftBox = document.getElementById('giftBox');
+            giftBox.classList.add('opened');
+        }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>宝探しゲーム</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #222; color: #0f0; transition: background 0.5s; }
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; z-index: 100; }
+        .visible { display: flex !important; }
+        button { padding: 15px 30px; font-size: 1.2rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>横浜ミステリーハント</h1>
+    <p id="msg">システム待機中...「スタート」で追跡開始</p>
+    <button id="startBtn">スタート</button>
+    <div id="distance" style="margin-top:20px;">-- m</div>
+
+    <div id="modal">
+        <div style="padding: 20px;">
+            <h2 id="modalTitle">発見！</h2>
+            <p id="modalText"></p>
+            <button onclick="closeModal()">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        // const target = { lat: 35.4475, lng: 139.6465 }; // 目的地：象の鼻パーク付近
+        const target = { lat: 35.4836, lng: 139.6182 };
+        const threshold = 50; 
+
+        function closeModal() { document.getElementById('modal').classList.remove('visible'); }
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            navigator.geolocation.watchPosition(updatePos, (err) => alert("位置情報を許可してください"), { enableHighAccuracy: true });
+            document.getElementById('msg').innerText = "探索中...目的地の近くに行こう！";
+        });
+
+        function updatePos(pos) {
+            const dist = getDist(pos.coords.latitude, pos.coords.longitude, target.lat, target.lng);
+            document.getElementById('distance').innerText = `残り距離: ${Math.floor(dist)} m`;
+
+            // 目的地に近づいた時の演出（緊急事態発生風）
+            if (dist < threshold) {
+                document.body.style.backgroundColor = "#500"; // 警告色
+                document.getElementById('modalTitle').innerText = "⚠️ 緊急事態発生！";
+                document.getElementById('modalText').innerText = "セキュリティを突破しました！急いで次の目的地へ向かってください！";
+                document.getElementById('modal').classList.add('visible');
+                
+                if ("vibrate" in navigator) navigator.vibrate([500, 200, 500, 200, 500]);
+            }
+        }
+
+        function getDist(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+    </script>
+</body>
+</html>

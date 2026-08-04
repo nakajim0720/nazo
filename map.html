@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>宝探しオペレーション</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: monospace; background: #000; color: #0f0; }
+        #map { height: 60vh; width: 100%; position: relative; }
+        .status-bar { height: 15vh; padding: 10px; border-bottom: 1px solid #0f0; }
+        .hacking-ui { height: 25vh; padding: 10px; }
+        /* スパイアイコンのアニメーション（中心からの拡大・縮小） */
+       .spy-icon {
+            animation: breathing 2s ease-in-out infinite;
+            transform-origin: 50% 50%;
+            overflow: hidden; /* 画像が枠からはみ出すのを防ぐ */
+        }
+
+        @keyframes breathing {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.4); }
+        100% { transform: scale(1); }
+        }
+
+        /* 既存のスタイルに加え、以下を追加 */
+        .custom-spy-icon {
+            background: transparent !important;
+            border: none !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="status-bar">
+        <div id="enemy-dist">スパイとの距離: -- m</div>
+        <div id="countdown">作戦終了まで: -- 分</div>
+    </div>
+    
+    <div id="map"></div>
+
+    <div class="hacking-ui">
+        <p>📡 無線傍受中：敵の暗号を解読せよ</p>
+        <input type="text" id="code-input" placeholder="暗号を入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px;">
+        <button onclick="checkCode()" style="background:#0f0; border:none; padding:5px;">ハッキング開始</button>
+        <p id="hack-result"></p>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 1. 設定
+        const map = L.map('map').setView([35.4475, 139.6465], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        const spyRoute = [
+            [35.4500, 139.6500], [35.4480, 139.6480], [35.4460, 139.6450], [35.4450, 139.6400]
+        ];
+        
+        let isHacked = false;
+        const startTime = Date.now();
+        const totalDurationMs = 120 * 60 * 1000;
+
+
+        // 2. マーカー
+        const myMarker = L.marker([0, 0]).addTo(map).bindPopup("現在地");
+        
+        // ★修正：スパイマーカーを一つに統合し、設定を整理しました
+        const spyIcon = L.divIcon({ 
+            html: '<div class="spy-icon" style="width:90px; height:90px; display:flex; align-items:center; justify-content:center;">' +
+                  '<img src="./img/spy.png" style="width:100%; height:100%; object-fit:contain; display:block;">' +
+                  '</div>', 
+            className: 'custom-spy-icon', // 背景透明化などのクラス
+            iconSize: [90, 90], 
+            iconAnchor: [45, 45] // 中心を座標に合わせる
+        });
+
+        const enemyMarker = L.marker(spyRoute[0], { icon: spyIcon }).addTo(map).bindPopup("スパイ");
+
+        // 3. ハッキング機能
+        function checkCode() {
+            if (document.getElementById('code-input').value === "YOKOHAMA") {
+                isHacked = true;
+                document.getElementById('hack-result').innerText = "SUCCESS: スパイの足を止めました！";
+            } else {
+                document.getElementById('hack-result').innerText = "FAILED: 暗号エラー";
+            }
+        }
+
+        // 4. 更新ロジック
+        // 現在地取得はグローバル変数に格納しておく
+        let currentMyPos = { lat: 0, lng: 0 };
+
+        // 現在地取得は外に出す
+        navigator.geolocation.watchPosition((pos) => {
+            currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
+            map.panTo([currentMyPos.lat, currentMyPos.lng]);
+        }, null, { enableHighAccuracy: true });
+
+        // すべての更新（敵移動・距離・カウントダウン）を1つのループに統合
+        setInterval(() => {
+            const now = Date.now();
+            const elapsed = now - startTime;
+            
+            // 1. 敵の移動処理
+            if (!isHacked) {
+                const progress = Math.min(elapsed / totalDurationMs, 1);
+                const totalSteps = spyRoute.length - 1;
+                const floatStep = progress * totalSteps;
+                const currentStep = Math.floor(floatStep);
+                const nextStep = Math.min(currentStep + 1, totalSteps);
+                
+                const t = floatStep - currentStep;
+                const lat = spyRoute[currentStep][0] + (spyRoute[nextStep][0] - spyRoute[currentStep][0]) * t;
+                const lng = spyRoute[currentStep][1] + (spyRoute[nextStep][1] - spyRoute[currentStep][1]) * t;
+                
+                enemyMarker.setLatLng([lat, lng]);
+            }
+
+            // 2. 距離計算（現在地が取得できていれば表示）
+            if (currentMyPos.lat !== 0) {
+                const dist = map.distance([currentMyPos.lat, currentMyPos.lng], enemyMarker.getLatLng());
+                document.getElementById('enemy-dist').innerText = `スパイとの距離: ${Math.floor(dist)} m`;
+            }
+
+            // 3. カウントダウン（秒単位で表示）
+            const timeLeftMs = Math.max(0, totalDurationMs - elapsed);
+            const totalSec = Math.floor(timeLeftMs / 1000);
+            const min = Math.floor(totalSec / 60);
+            const sec = totalSec % 60;
+            document.getElementById('countdown').innerText = `作戦終了まで: ${min}分 ${sec}秒`;
+
+        }, 10);
+            
+    </script>
+</body>
+</html>
