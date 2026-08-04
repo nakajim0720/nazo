@@ -104,8 +104,8 @@
             </div>
 
             <button id="ptt-btn" class="ptt-button" 
-                onmousedown="startListening()" onmouseup="stopListening()" 
-                ontouchstart="startListening()" ontouchend="stopListening()">
+                ontouchstart="startListening(event)" ontouchend="stopListening(event)"
+                onmousedown="startListening(event)" onmouseup="stopListening(event)">
                 [ 押しながら話す (PTT) ]
             </button>
             <p style="font-size: 10px; color: #888; text-align: center; margin-top: 8px;">※スマホのマイク使用許可を有効にしてください。</p>
@@ -227,9 +227,10 @@
             }
         }
 
-        // --- 音声認識（文字起こし）＆ GAS経由AI対話 ---
+        // --- 音声認識（文字起こし）＆ GAS経由AI対話（重複防止対策版） ---
         let recognition = null;
         let finalTranscript = '';
+        let isProcessingAudio = false; // 二重実行を防ぐフラグ
 
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -248,12 +249,23 @@
                     }
                 }
             };
+
+            recognition.onerror = (event) => {
+                console.error("音声認識エラー:", event.error);
+            };
         }
 
-        function startListening() {
-            if (!recognition) return;
+        // タッチとマウスのイベントが両方発火して重複するのを防ぐためのガード
+        function startListening(e) {
+            if (e) e.preventDefault(); // スマホでのタウンスクロールや重複イベントを抑制
+            if (isProcessingAudio || !recognition) return;
+            
             finalTranscript = '';
-            try { recognition.start(); } catch(e) {}
+            try { 
+                recognition.start(); 
+            } catch(err) {
+                // すでに開始している場合のエラーは無視
+            }
 
             const btn = document.getElementById('ptt-btn');
             const status = document.getElementById('radio-status');
@@ -264,9 +276,15 @@
             status.style.color = "#ff0";
         }
 
-        function stopListening() {
-            if (!recognition) return;
-            try { recognition.stop(); } catch(e) {}
+        function stopListening(e) {
+            if (e) e.preventDefault();
+            if (isProcessingAudio) return;
+            
+            isProcessingAudio = true; // 処理中フラグを立てる（重複防止）
+
+            try { 
+                recognition.stop(); 
+            } catch(err) {}
 
             const btn = document.getElementById('ptt-btn');
             const status = document.getElementById('radio-status');
@@ -303,17 +321,14 @@
 
                     // iPhone (Safari) 向けの音声合成処理
                     if ('speechSynthesis' in window) {
-                        // 音声がロードされるタイミングのズレを防ぐため、一度キャンセル
                         window.speechSynthesis.cancel();
 
                         const utr = new SpeechSynthesisUtterance(aiReply);
                         utr.lang = 'ja-JP';
-                        utr.pitch = 0.9; // 少し低めのトーンにして無線・男性っぽさを演出
-                        utr.rate = 1.05; // わずかにキビキビ喋る速度に調整
+                        utr.pitch = 0.9; 
+                        utr.rate = 1.05; 
 
-                        // iOSの音声リストから日本語の音声を自動取得して適用
                         const voices = window.speechSynthesis.getVoices();
-                        // iOSの場合、日本語音声（Kyoko, Otoya など）から最適なものを探す
                         const jpVoice = voices.find(v => v.lang === 'ja-JP' || v.lang === 'ja_JP');
                         if (jpVoice) {
                             utr.voice = jpVoice;
@@ -321,16 +336,20 @@
 
                         window.speechSynthesis.speak(utr);
                     }
+                    
+                    isProcessingAudio = false; // 処理完了後にフラグを解除
                 })
                 .catch(error => {
                     console.error("通信エラー:", error);
                     logArea.innerHTML += `<span style="color:#f00;">[${timeStr}] [システム]: 通信エラー（CORSまたはネットワーク切断）</span><br>`;
                     status.innerText = "[STATUS]: エラー発生";
+                    isProcessingAudio = false; // エラー時もフラグ解除
                 });
 
-            }, 500);
-        }
+            }, 600);
+        } 
 
+          
         // --- 地図 & ゲームロジック ---
         const map = L.map('map', {
             rotate: true,
