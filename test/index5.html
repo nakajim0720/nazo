@@ -285,37 +285,32 @@
                 logArea.innerHTML += `<span style="color:#ff0;">[${timeStr}] [あなた]: ${spokenText}</span><br>`;
                 logArea.scrollTop = logArea.scrollHeight;
 
-                // URLエンコードしてGASにGETパラメータとして送信することでCORSエラーを完全に回避します
-                const serverUrl = "https://script.google.com/macros/s/AKfycbyDsXgywUmT9S9AlKccYxq_P9pywhc0E-r8x4i0OdvDp4OtRifV6z12pC9j3RdDUtWh/exec?message=" + encodeURIComponent(spokenText);
+                // あなたのGASのウェブアプリURLを指定
+                const serverUrl = "https://script.google.com/macros/s/あなたのGASのデプロイID/exec";
 
-                // CORS制限を受けないモードで送信
+                // GAS経由でGemini APIに送信
                 fetch(serverUrl, {
-                    method: "GET",
-                    mode: "no-cors"
+                    method: "POST",
+                    body: JSON.stringify({ message: spokenText })
                 })
-                .then(() => {
-                    // no-corsでは中身が読めないため、スパイ風の通信演出としてAIの返答を動的に生成・表示します
-                    let aiReply = "【AI司令】：受信完了。周辺の警戒を怠るな。";
-                    if (spokenText.includes("ヒント") || spokenText.includes("どこ")) {
-                        aiReply = "【AI司令】：ヒントか？ 周囲のモニュメントや看板をよく確認しろ。";
-                    } else if (spokenText.includes("横浜") || spokenText.includes("宝")) {
-                        aiReply = "【AI司令】：よくぞそこまで辿り着いた。次の暗号の解読を急げ。";
-                    }
-
+                .then(response => response.json())
+                .then(data => {
+                    const aiReply = data.reply;
+                    
                     logArea.innerHTML += `<span style="color:#0f0;">[${timeStr}] ${aiReply}</span><br>`;
                     logArea.scrollTop = logArea.scrollHeight;
                     status.innerText = "[STATUS]: 受信待機中...";
 
                     // 音声合成で喋らせる
                     if ('speechSynthesis' in window) {
-                        const utr = new SpeechSynthesisUtterance(aiReply.replace(/【.+?】：/, ''));
+                        const utr = new SpeechSynthesisUtterance(aiReply);
                         utr.lang = 'ja-JP';
                         window.speechSynthesis.speak(utr);
                     }
                 })
                 .catch(error => {
                     console.error("通信エラー:", error);
-                    logArea.innerHTML += `<span style="color:#f00;">[${timeStr}] [システム]: 通信エラー（回線切断）</span><br>`;
+                    logArea.innerHTML += `<span style="color:#f00;">[${timeStr}] [システム]: 通信エラー（CORSまたはネットワーク切断）</span><br>`;
                     status.innerText = "[STATUS]: エラー発生";
                 });
 
