@@ -301,10 +301,24 @@
                     logArea.scrollTop = logArea.scrollHeight;
                     status.innerText = "[STATUS]: 受信待機中...";
 
-                    // 音声合成で喋らせる
+                    // iPhone (Safari) 向けの音声合成処理
                     if ('speechSynthesis' in window) {
+                        // 音声がロードされるタイミングのズレを防ぐため、一度キャンセル
+                        window.speechSynthesis.cancel();
+
                         const utr = new SpeechSynthesisUtterance(aiReply);
                         utr.lang = 'ja-JP';
+                        utr.pitch = 0.9; // 少し低めのトーンにして無線・男性っぽさを演出
+                        utr.rate = 1.05; // わずかにキビキビ喋る速度に調整
+
+                        // iOSの音声リストから日本語の音声を自動取得して適用
+                        const voices = window.speechSynthesis.getVoices();
+                        // iOSの場合、日本語音声（Kyoko, Otoya など）から最適なものを探す
+                        const jpVoice = voices.find(v => v.lang === 'ja-JP' || v.lang === 'ja_JP');
+                        if (jpVoice) {
+                            utr.voice = jpVoice;
+                        }
+
                         window.speechSynthesis.speak(utr);
                     }
                 })
