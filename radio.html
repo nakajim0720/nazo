@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>秘匿無線端末 - 司令エージェント</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: monospace; background: #000; color: #0f0; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; padding: 20px; }
+        
+        .radio-header { border-bottom: 1px solid #0f0; padding-bottom: 10px; text-align: center; }
+        .radio-header h2 { margin: 0; font-size: 18px; letter-spacing: 2px; }
+        
+        .radio-screen { background: #011001; border: 2px solid #0f0; padding: 15px; border-radius: 5px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; margin: 15px 0; }
+        
+        .radio-log-area { height: calc(100vh - 280px); overflow-y: scroll; font-size: 13px; border: 1px dashed #0f0; padding: 10px; background: #000; line-height: 1.6; word-break: break-all; }
+        
+        .ptt-button { background: #000; color: #0f0; border: 2px solid #0f0; padding: 20px; font-weight: bold; width: 100%; font-size: 18px; cursor: pointer; text-align: center; border-radius: 4px; transition: 0.1s; font-family: monospace; }
+        .ptt-button.active-transmit { background: #0f0; color: #000; box-shadow: 0 0 20px #0f0; }
+
+        .status-text { font-size: 12px; color: #88f; text-align: center; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="radio-header">
+        <h2>📻 SECURE RADIO LINK</h2>
+        <div style="font-size: 11px; color: #888; margin-top: 5px;">AGENCY: AI BACKUP SYSTEM</div>
+    </div>
+
+    <div class="radio-screen">
+        <div>
+            <div id="radio-status" class="status-text">[STATUS]: 回線接続完了・待機中</div>
+            <div id="radio-log" class="radio-log-area">
+                <span style="color:#888;">[00:00] ── 秘匿音声回線確立 ──</span><br>
+                <span style="color:#0f0;">[エージェント]: こちらバックアップAI。下のボタンを押しながら話せ。</span><br>
+            </div>
+        </div>
+
+        <div>
+            <button id="ptt-btn" class="ptt-button" 
+                ontouchstart="startListening(event)" ontouchend="stopListening(event)"
+                onmousedown="startListening(event)" onmouseup="stopListening(event)">
+                [ 押しながら話す (PTT) ]
+            </button>
+            <p style="font-size: 10px; color: #888; text-align: center; margin-top: 8px; margin-bottom: 0;">※長押しまたはタップしながら発話してください。</p>
+        </div>
+    </div>
+
+    <script>
+        // ページ読み込み時にマイクと音声合成の許可を自動要求
+        window.addEventListener('load', async () => {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                } catch (err) {
+                    console.warn("マイクのアクセスが拒否されました:", err);
+                }
+            }
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+            }
+        });
+
+        let recognition = null;
+        let finalTranscript = '';
+        let isProcessingAudio = false;
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ja-JP';
+            recognition.interimResults = true;
+            recognition.continuous = true;
+
+            recognition.onresult = (event) => {
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interim += event.results[i][0].transcript;
+                    }
+                }
+            };
+        }
+
+        function startListening(e) {
+            if (e) e.preventDefault();
+            if (isProcessingAudio || !recognition) return;
+            
+            finalTranscript = '';
+            try { recognition.start(); } catch(err) {}
+
+            const btn = document.getElementById('ptt-btn');
+            const status = document.getElementById('radio-status');
+
+            btn.classList.add('active-transmit');
+            btn.innerText = "[ 録音中... (お話ください) ]";
+            status.innerText = "[STATUS]: 音声収音中（文字起こし中）...";
+            status.style.color = "#ff0";
+        }
+
+        function stopListening(e) {
+            if (e) e.preventDefault();
+            if (isProcessingAudio) return;
+            
+            isProcessingAudio = true;
+
+            try { recognition.stop(); } catch(err) {}
+
+            const btn = document.getElementById('ptt-btn');
+            const status = document.getElementById('radio-status');
+            const logArea = document.getElementById('radio-log');
+
+            btn.classList.remove('active-transmit');
+            btn.innerText = "[ 押しながら話す (PTT) ]";
+            status.innerText = "[STATUS]: AI応答生成中...";
+            status.style.color = "#88f";
+
+            setTimeout(() => {
+                const timeStr = new Date().toTimeString().split(' ')[0];
+                const spokenText = finalTranscript.trim() !== '' ? finalTranscript : "（音声が検出されませんでした）";
+                
+                logArea.innerHTML += `<span style="color:#ff0;">[${timeStr}] [あなた]: ${spokenText}</span><br>`;
+                logArea.scrollTop = logArea.scrollHeight;
+
+                // ご自身のGASウェブアプリのURLを指定してください
+                const serverUrl = "https://script.google.com/macros/s/AKfycbyDsXgywUmT9S9AlKccYxq_P9pywhc0E-r8x4i0OdvDp4OtRifV6z12pC9j3RdDUtWh/exec";
+
+                fetch(serverUrl, {
+                    method: "POST",
+                    body: JSON.stringify({ message: spokenText })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const aiReply = data.reply;
+                    
+                    logArea.innerHTML += `<span style="color:#0f0;">[${timeStr}] ${aiReply}</span><br>`;
+                    logArea.scrollTop = logArea.scrollHeight;
+                    status.innerText = "[STATUS]: 回線待機中...";
+                    status.style.color = "#88f";
+
+                    if ('speechSynthesis' in window) {
+                        window.speechSynthesis.cancel();
+
+                        const utr = new SpeechSynthesisUtterance(aiReply);
+                        utr.lang = 'ja-JP';
+                        utr.pitch = 0.9; 
+                        utr.rate = 1.05; 
+
+                        const voices = window.speechSynthesis.getVoices();
+                        const jpVoice = voices.find(v => v.lang === 'ja-JP' || v.lang === 'ja_JP');
+                        if (jpVoice) {
+                            utr.voice = jpVoice;
+                        }
+
+                        window.speechSynthesis.speak(utr);
+                    }
+                    
+                    isProcessingAudio = false;
+                })
+                .catch(error => {
+                    console.error("通信エラー:", error);
+                    logArea.innerHTML += `<span style="color:#f00;">[${timeStr}] [システム]: 回線切断エラー</span><br>`;
+                    status.innerText = "[STATUS]: エラー発生";
+                    status.style.color = "#f00";
+                    isProcessingAudio = false;
+                });
+
+            }, 600);
+        }
+    </script>
+</body>
+</html>

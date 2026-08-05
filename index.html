@@ -9,6 +9,11 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: monospace; background: #000; color: #0f0; overflow: hidden; }
         
+        /* スタート画面（初期画面） */
+        #page-welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0; z-index: 9999; box-sizing: border-box; padding: 20px; text-align: center; }
+        .start-btn { background: #000; color: #0f0; border: 2px solid #0f0; padding: 15px 30px; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 5px; box-shadow: 0 0 15px rgba(0,255,0,0.4); transition: 0.2s; font-family: monospace; margin-top: 20px; }
+        .start-btn:active { background: #0f0; color: #000; }
+
         /* ヘッダー・ハンバーガーメニュー */
         .header { height: 50px; background: #111; border-bottom: 1px solid #0f0; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; position: relative; z-index: 1001; }
         .hamburger-btn { background: none; border: none; color: #0f0; font-size: 24px; cursor: pointer; }
@@ -36,12 +41,6 @@
         .puzzle-content { display: none; border: 1px solid #0f0; padding: 15px; margin-top: 10px; background: #050505; }
         .puzzle-content.active-puzzle { display: block; }
 
-        /* 無線トランシーバー風の装飾 */
-        .radio-screen { background: #011001; border: 2px solid #0f0; padding: 15px; border-radius: 5px; }
-        .radio-log-area { height: 550px; overflow-y: scroll; font-size: 12px; margin-bottom: 15px; border: 1px dashed #0f0; padding: 10px; background: #000; line-height: 1.5; }
-        .ptt-button { background: #000; color: #0f0; border: 2px solid #0f0; padding: 15px; font-weight: bold; width: 100%; font-size: 16px; cursor: pointer; text-align: center; border-radius: 4px; transition: 0.1s; }
-        .ptt-button.active-transmit { background: #0f0; color: #000; box-shadow: 0 0 15px #0f0; }
-
         /* スパイアイコンのアニメーション */
         .spy-icon { animation: breathing 2s ease-in-out infinite; transform-origin: 50% 50%; overflow: hidden; }
         @keyframes breathing { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
@@ -49,6 +48,15 @@
     </style>
 </head>
 <body>
+
+    <!-- 初期ウェルカム画面（ゲーム開始ボタン） -->
+    <div id="page-welcome">
+        <h2 style="color: #0f0; margin-bottom: 10px;">■ 秘匿作戦システム</h2>
+        <p style="color: #888; font-size: 13px; max-width: 300px; line-height: 1.6;">
+            本作戦を遂行するため、位置情報（GPS）のアクセス許可が必要です。
+        </p>
+        <button class="start-btn" onclick="requestPermissionsAndStart()">ゲームを始める</button>
+    </div>
 
     <!-- ヘッダー -->
     <div class="header">
@@ -62,13 +70,12 @@
         <div style="margin-bottom: 20px; font-weight: bold; border-bottom: 1px solid #0f0; padding-bottom: 5px;">■ MENU</div>
         <a class="nav-item" onclick="switchPage('page-home')">01. トップ画面（司令室）</a>
         <a class="nav-item" onclick="switchPage('page-map')">02. マップ（追跡モニター）</a>
-        <a class="nav-item" onclick="switchPage('page-radio')">03. 無線トランシーバー</a>
-        <a class="nav-item" onclick="switchPage('page-hack')">04. ハッキング</a>
-        <a class="nav-item" onclick="switchPage('page-puzzle')">05. ミッション・問題一覧</a>
+        <a class="nav-item" onclick="switchPage('page-hack')">03. ハッキング</a>
+        <a class="nav-item" onclick="switchPage('page-puzzle')">04. ミッション・問題一覧</a>
     </div>
 
     <!-- 01. トップ画面 -->
-    <div id="page-home" class="page active">
+    <div id="page-home" class="page">
         <div class="status-card">
             <h3>【作戦ステータス】</h3>
             <p id="my-pos-text">現在地: 取得中...</p>
@@ -78,7 +85,6 @@
         <div class="status-card">
             <h3>【クイックアクセス】</h3>
             <button onclick="switchPage('page-map')" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:10px; margin-bottom:8px;">マップを開く</button>
-            <button onclick="switchPage('page-radio')" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:10px; margin-bottom:8px;">無線を開く</button>
             <button onclick="switchPage('page-hack')" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:10px; margin-bottom:8px;">ハッキング端末を開く</button>
             <button onclick="switchPage('page-puzzle')" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:10px;">ミッションファイルを開く</button>
         </div>
@@ -92,27 +98,7 @@
         </div>
     </div>
 
-    <!-- 03. 無線画面 -->
-    <div id="page-radio" class="page">
-        <div class="radio-screen">
-            <h3 style="margin-top:0;">📻 司令本部・音声無線回線</h3>
-            <div id="radio-status" style="font-size: 11px; color: #88f; margin-bottom: 5px;">[STATUS]: 音声回線待機中</div>
-            
-            <div id="radio-log" class="radio-log-area">
-                <span style="color:#888;">[00:00] ── 秘匿音声回線接続完了 ──</span><br>
-                <span style="color:#0f0;">[司令本部]: こちら司令室。マイクボタンを押しながら話せ。</span><br>
-            </div>
-
-            <button id="ptt-btn" class="ptt-button" 
-                ontouchstart="startListening(event)" ontouchend="stopListening(event)"
-                onmousedown="startListening(event)" onmouseup="stopListening(event)">
-                [ 押しながら話す (PTT) ]
-            </button>
-            <p style="font-size: 10px; color: #888; text-align: center; margin-top: 8px;">※スマホのマイク使用許可を有効にしてください。</p>
-        </div>
-    </div>
-
-    <!-- 04. ハッキング画面 -->
+    <!-- 03. ハッキング画面 -->
     <div id="page-hack" class="page">
         <h3>💻 敵システム・ハッキング</h3>
         <p>📡 無線傍受中：敵の暗号を解読せよ</p>
@@ -121,7 +107,7 @@
         <p id="hack-result" style="margin-top: 15px;"></p>
     </div>
 
-    <!-- 05. 謎解き画面 -->
+    <!-- 04. 謎解き画面 -->
     <div id="page-puzzle" class="page">
         <h3>🧩 ミッションファイル</h3>
         <p style="font-size: 12px; color: #888;">各ステージの暗号を解き、次の目的地を割り出せ。</p>
@@ -178,6 +164,29 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotate-map@0.3.1/dist/leaflet-rotate-map.js"></script>
     <script>
+        // --- 権限リクエスト & ゲーム開始処理 ---
+        function requestPermissionsAndStart() {
+            // 位置情報（GPS）の許可を要求
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
+                        map.setView([currentMyPos.lat, currentMyPos.lng], 16);
+                        isFirstLocationFix = false;
+                    },
+                    (err) => {
+                        console.warn("位置情報の取得が拒否されました:", err.message);
+                    },
+                    { enableHighAccuracy: true }
+                );
+            }
+
+            // スタート画面を非表示にして作戦司令室を表示
+            document.getElementById('page-welcome').style.display = 'none';
+            switchPage('page-home');
+        }
+
         // --- 画面切り替え & メニュー制御 ---
         function toggleMenu() {
             const menu = document.getElementById('nav-menu');
@@ -203,7 +212,6 @@
             const titles = {
                 'page-home': '作戦司令室',
                 'page-map': '追跡モニター（マップ）',
-                'page-radio': '無線通信',
                 'page-hack': 'ハッキング端末',
                 'page-puzzle': 'ミッションファイル'
             };
@@ -227,129 +235,6 @@
             }
         }
 
-        // --- 音声認識（文字起こし）＆ GAS経由AI対話（重複防止対策版） ---
-        let recognition = null;
-        let finalTranscript = '';
-        let isProcessingAudio = false; // 二重実行を防ぐフラグ
-
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.lang = 'ja-JP';
-            recognition.interimResults = true;
-            recognition.continuous = true;
-
-            recognition.onresult = (event) => {
-                let interim = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    } else {
-                        interim += event.results[i][0].transcript;
-                    }
-                }
-            };
-
-            recognition.onerror = (event) => {
-                console.error("音声認識エラー:", event.error);
-            };
-        }
-
-        // タッチとマウスのイベントが両方発火して重複するのを防ぐためのガード
-        function startListening(e) {
-            if (e) e.preventDefault(); // スマホでのタウンスクロールや重複イベントを抑制
-            if (isProcessingAudio || !recognition) return;
-            
-            finalTranscript = '';
-            try { 
-                recognition.start(); 
-            } catch(err) {
-                // すでに開始している場合のエラーは無視
-            }
-
-            const btn = document.getElementById('ptt-btn');
-            const status = document.getElementById('radio-status');
-
-            btn.classList.add('active-transmit');
-            btn.innerText = "[ 録音中... (お話ください) ]";
-            status.innerText = "[STATUS]: 音声収音中（文字起こし中）...";
-            status.style.color = "#ff0";
-        }
-
-        function stopListening(e) {
-            if (e) e.preventDefault();
-            if (isProcessingAudio) return;
-            
-            isProcessingAudio = true; // 処理中フラグを立てる（重複防止）
-
-            try { 
-                recognition.stop(); 
-            } catch(err) {}
-
-            const btn = document.getElementById('ptt-btn');
-            const status = document.getElementById('radio-status');
-            const logArea = document.getElementById('radio-log');
-
-            btn.classList.remove('active-transmit');
-            btn.innerText = "[ 押しながら話す (PTT) ]";
-            status.innerText = "[STATUS]: AI応答待ち...";
-            status.style.color = "#88f";
-
-            setTimeout(() => {
-                const timeStr = new Date().toTimeString().split(' ')[0];
-                const spokenText = finalTranscript.trim() !== '' ? finalTranscript : "（音声が検出されませんでした）";
-                
-                // 自分の発話をログに出力
-                logArea.innerHTML += `<span style="color:#ff0;">[${timeStr}] [あなた]: ${spokenText}</span><br>`;
-                logArea.scrollTop = logArea.scrollHeight;
-
-                // あなたのGASのウェブアプリURLを指定
-                const serverUrl = "https://script.google.com/macros/s/AKfycbyDsXgywUmT9S9AlKccYxq_P9pywhc0E-r8x4i0OdvDp4OtRifV6z12pC9j3RdDUtWh/exec";
-
-                // GAS経由でGemini APIに送信
-                fetch(serverUrl, {
-                    method: "POST",
-                    body: JSON.stringify({ message: spokenText })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    const aiReply = data.reply;
-                    
-                    logArea.innerHTML += `<span style="color:#0f0;">[${timeStr}] ${aiReply}</span><br>`;
-                    logArea.scrollTop = logArea.scrollHeight;
-                    status.innerText = "[STATUS]: 受信待機中...";
-
-                    // iPhone (Safari) 向けの音声合成処理
-                    if ('speechSynthesis' in window) {
-                        window.speechSynthesis.cancel();
-
-                        const utr = new SpeechSynthesisUtterance(aiReply);
-                        utr.lang = 'ja-JP';
-                        utr.pitch = 0.9; 
-                        utr.rate = 1.05; 
-
-                        const voices = window.speechSynthesis.getVoices();
-                        const jpVoice = voices.find(v => v.lang === 'ja-JP' || v.lang === 'ja_JP');
-                        if (jpVoice) {
-                            utr.voice = jpVoice;
-                        }
-
-                        window.speechSynthesis.speak(utr);
-                    }
-                    
-                    isProcessingAudio = false; // 処理完了後にフラグを解除
-                })
-                .catch(error => {
-                    console.error("通信エラー:", error);
-                    logArea.innerHTML += `<span style="color:#f00;">[${timeStr}] [システム]: 通信エラー（CORSまたはネットワーク切断）</span><br>`;
-                    status.innerText = "[STATUS]: エラー発生";
-                    isProcessingAudio = false; // エラー時もフラグ解除
-                });
-
-            }, 600);
-        } 
-
-          
         // --- 地図 & ゲームロジック ---
         const map = L.map('map', {
             rotate: true,
@@ -380,7 +265,6 @@
 
         const enemyMarker = L.marker(spyRoute[0], { icon: spyIcon }).addTo(map).bindPopup("スパイ");
 
-        // ハッキング判定
         function checkCode() {
             const inputVal = document.getElementById('code-input').value;
             const resultElem = document.getElementById('hack-result');
