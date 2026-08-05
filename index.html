@@ -94,7 +94,8 @@
     <div id="page-map" class="page" style="padding: 0;">
         <div id="map-container">
             <div id="map"></div>
-            <div id="map-dist-badge" style="position: absolute; top: 15px; left: 15px; z-index: 999; background: rgba(0,0,0,0.8); border: 1px solid #0f0; padding: 8px 12px; font-size: 13px; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,255,0,0.3);">
+            <!-- 左上に配置する距離バッジ（ズームボタンと被らないように配置） -->
+            <div id="map-dist-badge" style="position: absolute; top: 15px; left: 15px; z-index: 999; background: rgba(0,0,0,0.85); border: 1px solid #0f0; padding: 8px 12px; font-size: 13px; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,255,0,0.3);">
                 スパイとの距離: -- m
             </div>
             <button class="map-control-btn" onclick="panToMyPosition()">📍 現在地へ</button>
@@ -242,8 +243,12 @@
         const map = L.map('map', {
             rotate: true,
             touchRotate: true,
-            rotateControl: true
+            rotateControl: true,
+            zoomControl: false // デフォルトの左上ズームを非表示
         }).setView([35.4475, 139.6465], 16);
+
+        // ズームボタンを右上に配置
+        L.control.zoom({ position: 'topright' }).addTo(map);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
@@ -330,12 +335,12 @@
                 const dist = map.distance([currentMyPos.lat, currentMyPos.lng], enemyMarker.getLatLng());
                 distText = `スパイとの距離: ${Math.floor(dist)} m`;
             }
-
+            
             // 1. トップ画面側の距離表示を更新
             const homeDistElem = document.getElementById('home-dist');
             if (homeDistElem) homeDistElem.innerText = distText;
 
-            // 2. マップ画面側の距離バッジを更新（新規追加）
+            // 2. マップ画面側の距離バッジを更新
             const mapDistBadge = document.getElementById('map-dist-badge');
             if (mapDistBadge) mapDistBadge.innerText = distText;
 
