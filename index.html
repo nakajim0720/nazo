@@ -54,6 +54,8 @@
     </style>
 </head>
 <body>
+    <!-- iOS Safari向け Hapticトリガー（画面外に非表示配置） -->
+    <input type="checkbox" switch id="ios-haptic-trigger" style="display:none;">
 
     <!-- 初期ウェルカム画面（ゲーム開始ボタン） -->
     <div id="page-welcome">
@@ -358,11 +360,11 @@
                     document.getElementById('hack-result').innerHTML = 
                         "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。ただし、バックアップ回路により再起動が予測されます。</span>";
 
-                    // --- 一定時間（例: 30秒間＝30000ミリ秒）後にシステムが自動復旧するタイマー ---
+                    // --- 一定時間（30秒後）に自動復旧 ---
                     setTimeout(() => {
                         isHacked = false; // スパイの活動再開
 
-                        // スパイアイコンのグレーアウトを解除し、脈動を復活させる
+                        // スパイアイコンのグレーアウトを解除
                         if (iconElement) {
                             const spyDiv = iconElement.querySelector('.spy-icon');
                             if (spyDiv) {
@@ -371,13 +373,10 @@
                         }
                         enemyMarker.bindPopup("【警告】スパイのシステムが復旧！逃走中！").openPopup();
 
-                        // --- スマホのバイブレーションで通知（対応端末のみ作動） ---
-                        if ("vibrate" in navigator) {
-                            // 例: 500ミリ秒振動 → 200ミリ秒停止 → 500ミリ秒振動
-                            navigator.vibrate([500, 200, 500]);
-                        }
+                        // バイブレーション（触覚フィードバック）と警告音を発火
+                        triggerAlarmFeedback();
 
-                    }, 30000); // 30秒後に復旧（必要に応じてミリ秒を変更可能）
+                    }, 30000);
                 }
             }, 30);
         }
@@ -454,6 +453,46 @@
             if (miniTimer) miniTimer.innerText = `${min}分${sec}秒`;
 
         }, 1000);
+
+        // --- 触覚フィードバック & 警告ビープ音通知 ---
+        function triggerAlarmFeedback() {
+            // 1. Androidなどの標準バイブレーション
+            if ("vibrate" in navigator) {
+                navigator.vibrate([400, 150, 400]);
+            }
+
+            // 2. iOS Safari向けのTaptic Engineトリガー
+            const hapticEl = document.getElementById('ios-haptic-trigger');
+            if (hapticEl) {
+                hapticEl.checked = !hapticEl.checked;
+            }
+
+            // 3. 補助警告音（Web Audio APIで電子ビープ音を再生）
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    const ctx = new AudioCtx();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.type = 'sawtooth'; // ノコギリ波（警告ブザー音）
+                    osc.frequency.setValueAtTime(880, ctx.currentTime); // A5の音
+                    osc.frequency.setValueAtTime(440, ctx.currentTime + 0.15); // 音程変化
+                    
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.4);
+                }
+            } catch (e) {
+                console.warn("Audio alarm failed:", e);
+            }
+        }
+
     </script>
 </body>
 </html>
