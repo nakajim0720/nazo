@@ -45,6 +45,12 @@
         .spy-icon { animation: breathing 2s ease-in-out infinite; transform-origin: 50% 50%; overflow: hidden; }
         @keyframes breathing { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
         .custom-spy-icon { background: transparent !important; border: none !important; display: flex !important; align-items: center; justify-content: center; }
+        /* スパイアイコンのグレーアウト（停止時） */
+        .spy-icon.stopped {
+            filter: grayscale(100%) brightness(50%);
+            opacity: 0.6;
+            animation: none; /* 停止時は脈動アニメーションも止める */
+        }
     </style>
 </head>
 <body>
@@ -328,6 +334,18 @@
                 if (width >= 100) {
                     clearInterval(interval);
                     isHacked = true; // スパイの移動を止めるトリガー
+
+                    // --- スパイアイコンをグレーアウト（停止演出） ---
+                    const iconElement = enemyMarker.getElement();
+                    if (iconElement) {
+                        const spyDiv = iconElement.querySelector('.spy-icon');
+                        if (spyDiv) {
+                            spyDiv.classList.add('stopped');
+                        }
+                    }
+                    // ポップアップも書き換える
+                    enemyMarker.bindPopup("【システム停止】スパイ拘束完了").openPopup();
+
                     document.getElementById('hack-result').innerHTML = 
                         "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。スパイを無力化しました。</span>";
                 }
