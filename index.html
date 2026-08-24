@@ -316,13 +316,23 @@
             }, 50);
         }
 
+        // --- 変数追加 ---
+        let hasHackedOnce = false; // ハッキングを一度でも行ったかのフラグ
+
         function startHack() {
-            const inputVal = document.getElementById('code-input').value;
-            if (inputVal !== "YOKOHAMA") {
-                alert("アクセス拒否：不正なキーです。");
+            // 2回目以降のアクセスは一律拒否
+            if (hasHackedOnce) {
+                alert("ACCESS DENIED: ファイアウォールが強化され、再度の侵入は不可能です。");
                 return;
             }
 
+            const inputVal = document.getElementById('code-input').value;
+            if (inputVal !== "YOKOHAMA") {
+                alert("ACCESS拒否：不正なキーです。");
+                return;
+            }
+
+            hasHackedOnce = true; // ハッキング権限を消費
             document.getElementById('hack-step2').style.display = 'none';
             document.getElementById('hack-step3').style.display = 'block';
             
@@ -333,7 +343,7 @@
                 bar.style.width = width + "%";
                 if (width >= 100) {
                     clearInterval(interval);
-                    isHacked = true; // スパイの移動を止めるトリガー
+                    isHacked = true; // スパイの移動を一時停止
 
                     // --- スパイアイコンをグレーアウト（停止演出） ---
                     const iconElement = enemyMarker.getElement();
@@ -343,11 +353,31 @@
                             spyDiv.classList.add('stopped');
                         }
                     }
-                    // ポップアップも書き換える
-                    enemyMarker.bindPopup("【システム停止】スパイ拘束完了").openPopup();
+                    enemyMarker.bindPopup("【システム停止】スパイ足止め中").openPopup();
 
                     document.getElementById('hack-result').innerHTML = 
-                        "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。スパイを無力化しました。</span>";
+                        "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。ただし、バックアップ回路により再起動が予測されます。</span>";
+
+                    // --- 一定時間（例: 30秒間＝30000ミリ秒）後にシステムが自動復旧するタイマー ---
+                    setTimeout(() => {
+                        isHacked = false; // スパイの活動再開
+
+                        // スパイアイコンのグレーアウトを解除し、脈動を復活させる
+                        if (iconElement) {
+                            const spyDiv = iconElement.querySelector('.spy-icon');
+                            if (spyDiv) {
+                                spyDiv.classList.remove('stopped');
+                            }
+                        }
+                        enemyMarker.bindPopup("【警告】スパイのシステムが復旧！逃走中！").openPopup();
+
+                        // --- スマホのバイブレーションで通知（対応端末のみ作動） ---
+                        if ("vibrate" in navigator) {
+                            // 例: 500ミリ秒振動 → 200ミリ秒停止 → 500ミリ秒振動
+                            navigator.vibrate([500, 200, 500]);
+                        }
+
+                    }, 30000); // 30秒後に復旧（必要に応じてミリ秒を変更可能）
                 }
             }, 30);
         }
