@@ -104,11 +104,30 @@
 
     <!-- 03. ハッキング画面 -->
     <div id="page-hack" class="page">
-        <h3>💻 敵システム・ハッキング</h3>
-        <p>📡 無線傍受中：敵の暗号を解読せよ</p>
-        <input type="text" id="code-input" placeholder="暗号を入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:8px; width:70%;">
-        <button onclick="checkCode()" style="background:#0f0; border:none; padding:9px; font-weight:bold;">実行</button>
-        <p id="hack-result" style="margin-top: 15px;"></p>
+        <h3>💻 敵システム・侵入ツール</h3>
+        
+        <!-- ステップ1: 傍受ボタン -->
+        <div id="hack-step1">
+            <p>📡 敵の無線通信を傍受・解析せよ。</p>
+            <button id="intercept-btn" onclick="startIntercept()" style="background:#000; color:#0f0; border:1px solid #0f0; padding:10px 20px;">傍受を開始</button>
+            <div id="intercept-progress-container" style="display:none; margin:15px 0;">
+                <div style="font-size:10px; margin-bottom:5px;">解析中...</div>
+                <div style="width:100%; height:10px; border:1px solid #0f0;"><div id="intercept-bar" style="width:0%; height:100%; background:#0f0;"></div></div>
+            </div>
+        </div>
+
+        <!-- ステップ2: 謎解き -->
+        <div id="hack-step2" style="display:none; margin-top:20px;">
+            <p id="intercepted-message" style="color:#ff0; border:1px dashed #ff0; padding:10px;"></p>
+            <input type="text" id="code-input" placeholder="解読キーを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:8px; width:70%;">
+            <button onclick="startHack()" style="background:#0f0; border:none; padding:9px; font-weight:bold;">侵入実行</button>
+        </div>
+
+        <!-- ステップ3: 実行中プログレス -->
+        <div id="hack-step3" style="display:none; margin-top:20px;">
+            <div style="width:100%; height:20px; border:1px solid #0f0;"><div id="hack-bar" style="width:0%; height:100%; background:#f00;"></div></div>
+            <p id="hack-result"></p>
+        </div>
     </div>
 
     <!-- 04. 謎解き画面 -->
@@ -273,15 +292,46 @@
 
         const enemyMarker = L.marker(spyRoute[0], { icon: spyIcon }).addTo(map).bindPopup("スパイ");
 
-        function checkCode() {
+        // --- ハッキング・傍受ロジック ---
+        function startIntercept() {
+            document.getElementById('intercept-btn').style.display = 'none';
+            document.getElementById('intercept-progress-container').style.display = 'block';
+            
+            let bar = document.getElementById('intercept-bar');
+            let width = 0;
+            let interval = setInterval(() => {
+                width += 2;
+                bar.style.width = width + "%";
+                if (width >= 100) {
+                    clearInterval(interval);
+                    document.getElementById('hack-step2').style.display = 'block';
+                    document.getElementById('intercepted-message').innerText = "【傍受内容】: 『横浜の始まりの地、赤い靴を履いた少女が眺める先の……その場所が暗号の鍵となる。』";
+                }
+            }, 50);
+        }
+
+        function startHack() {
             const inputVal = document.getElementById('code-input').value;
-            const resultElem = document.getElementById('hack-result');
-            if (inputVal === "YOKOHAMA") {
-                isHacked = true;
-                resultElem.innerHTML = "SUCCESS: スパイの足を止めました！<br><small style='font-size:9px; color:#888;'>System by N.N.</small>";
-            } else {
-                resultElem.innerText = "FAILED: 暗号エラー";
+            if (inputVal !== "YOKOHAMA") {
+                alert("アクセス拒否：不正なキーです。");
+                return;
             }
+
+            document.getElementById('hack-step2').style.display = 'none';
+            document.getElementById('hack-step3').style.display = 'block';
+            
+            let bar = document.getElementById('hack-bar');
+            let width = 0;
+            let interval = setInterval(() => {
+                width += 1;
+                bar.style.width = width + "%";
+                if (width >= 100) {
+                    clearInterval(interval);
+                    isHacked = true; // スパイの移動を止めるトリガー
+                    document.getElementById('hack-result').innerHTML = 
+                        "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。スパイを無力化しました。</span>";
+                }
+            }, 30);
         }
 
         let currentMyPos = { lat: 0, lng: 0 };
