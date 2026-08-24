@@ -51,6 +51,16 @@
             opacity: 0.6;
             animation: none; /* 停止時は脈動アニメーションも止める */
         }
+
+        /* 画面警告フラッシュアニメーション */
+        @keyframes alarmFlash {
+            0% { background-color: rgba(255, 0, 0, 0); }
+            50% { background-color: rgba(255, 0, 0, 0.4); }
+            100% { background-color: rgba(255, 0, 0, 0); }
+        }
+        .screen-flash {
+            animation: alarmFlash 0.5s ease-in-out 3;
+        }
     </style>
 </head>
 <body>
@@ -360,7 +370,7 @@
                     document.getElementById('hack-result').innerHTML = 
                         "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。ただし、バックアップ回路により再起動が予測されます。</span>";
 
-                    // --- 一定時間（30秒後）に自動復旧 ---
+                    /// --- 一定時間（30秒後）に自動復旧 ---
                     setTimeout(() => {
                         isHacked = false; // スパイの活動再開
 
@@ -373,8 +383,14 @@
                         }
                         enemyMarker.bindPopup("【警告】スパイのシステムが復旧！逃走中！").openPopup();
 
-                        // バイブレーション（触覚フィードバック）と警告音を発火
-                        triggerAlarmFeedback();
+                        // 画面全体を赤く点滅させて視覚的に警告
+                        document.body.classList.add('screen-flash');
+                        setTimeout(() => {
+                            document.body.classList.remove('screen-flash');
+                        }, 1500);
+
+                        // 画面上に緊急ポップアップを表示
+                        alert("【緊急警告】\n敵のバックアップシステムが作動し、スパイが逃走を再開しました！マップを確認せよ！");
 
                     }, 30000);
                 }
