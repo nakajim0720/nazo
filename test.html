@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アラート画面テスト</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        button {
+            background: #000;
+            color: #ff0;
+            border: 2px solid #ff0;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        /* 画面警告フラッシュ用オーバーレイ */
+        #alert-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 0, 0, 0);
+            pointer-events: none;
+            z-index: 99999;
+            transition: background-color 0.2s ease;
+        }
+        @keyframes flashRed {
+            0% { background-color: rgba(255, 0, 0, 0); }
+            50% { background-color: rgba(255, 0, 0, 0.7); }
+            100% { background-color: rgba(255, 0, 0, 0); }
+        }
+        .flashing {
+            animation: flashRed 0.4s ease-in-out 3;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 画面警告フラッシュ用オーバーレイ -->
+    <div id="alert-overlay"></div>
+
+    <h2>■ アラート画面単体テスト</h2>
+    <p>下のボタンを押すと、画面が赤く点滅します。</p>
+    <button onclick="triggerFlashTest()">警告画面テスト</button>
+
+    <script>
+        function triggerFlashTest() {
+            const overlay = document.getElementById('alert-overlay');
+            if (overlay) {
+                overlay.classList.add('flashing');
+                
+                // アニメーション終了後（0.4秒 × 3回 = 1.2秒）にクラスを削除
+                setTimeout(() => {
+                    overlay.classList.remove('flashing');
+                }, 1200);
+            }
+        }
+    </script>
+</body>
+</html>
