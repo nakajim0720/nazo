@@ -664,7 +664,7 @@
                     }
 
                     document.getElementById('hack-result').innerHTML = 
-                        "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。ただし、バックアップ回路により再起動が予測されます。</span>";
+                        "<span style='color:#f00; text-size:18px;'>ACCESS GRANTED: 敵システム停止完了。</span>";
 
                     setTimeout(() => {
                         isHacked = false;
@@ -713,20 +713,37 @@
                         for (let i = 0; i < 3; i++) {
                             let startTime = ctx.currentTime + setTimeOffset + (i * 1.0);
                             
-                            let osc = ctx.createOscillator();
+                             // 💡 工夫1: 音を太くするため、2つのオシレータを同時に作ります
+                            let osc1 = ctx.createOscillator();
+                            let osc2 = ctx.createOscillator();
                             let gain = ctx.createGain();
+
+                            // 最もジリジリした倍音が含まれる「のこぎり波」を使用
+                            osc1.type = 'sine';
+                            osc2.type = 'square';
+
+                            // 60Hz
+                            osc1.frequency.setValueAtTime(60, startTime);
+                            osc2.frequency.setValueAtTime(60, startTime);
                             
-                            osc.type = 'sawtooth';
-                            osc.frequency.setValueAtTime(100, startTime);
+                            // 💡 工夫3: ブザー独特の「ブツッ」とした荒々しい切れ味
+                            // gain.gain.setValueAtTime(0.4, startTime); 
+                            // 1秒間の終わりの方に、わずか0.05秒で急激に音量を落とす（フェードアウトをほぼ作らない）
+                            gain.gain.setValueAtTime(0.4, startTime + 0.8);
+                            gain.gain.linearRampToValueAtTime(0.001, startTime + 0.9);
                             
-                            gain.gain.setValueAtTime(0.4, startTime);
-                            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.9);
-                            
-                            osc.connect(gain);
+                            // 2つのオシレータを同じ1つのボリューム（gain）にまとめる
+                            osc1.connect(gain);
+                            osc2.connect(gain);
                             gain.connect(ctx.destination);
-                            
-                            osc.start(startTime);
-                            osc.stop(startTime + 0.9);
+    
+                            // 同時にスタートして、同時にストップ
+                            osc1.start(startTime);
+                            osc2.start(startTime);
+                                                
+                            osc1.stop(startTime + 1.0);
+                            osc2.stop(startTime + 1.0);
+
                         }
                     }
                 }
@@ -777,7 +794,7 @@
                 }
 
                 const banner = document.getElementById('recovery-warning-banner');
-                document.getElementById('banner-title').innerText = "🚨 敵スパイ活動開始 🚨";
+                document.getElementById('banner-title').innerText = "敵スパイ活動開始";
                 document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが移動を開始しました！追跡せよ！";
                 if (banner) {
                     banner.style.display = 'block';
