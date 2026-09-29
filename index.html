@@ -3,214 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>宝探しオペレーション</title>
-    <!-- Leaflet CSS -->
+    <title>PROJECT: OMEGA - YOKOHAMA LEGACY</title>
+    <!-- Leaflet CSS（地図描画ライブラリ用） -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
+        /* ==========================================
+           1. 全体レイアウト・ベーススタイル
+           ========================================== */
         body, html { margin: 0; padding: 0; height: 100%; font-family: monospace; background: #000; color: #0f0; overflow: hidden; }
         
-        /* スタート画面（初期画面） */
-        #page-welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0; z-index: 9999; box-sizing: border-box; padding: 20px; text-align: center; }
-        .start-btn { background: #000; color: #0f0; border: 2px solid #0f0; padding: 15px 30px; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 5px; box-shadow: 0 0 15px rgba(0,255,0,0.4); transition: 0.2s; font-family: monospace; margin-top: 20px; }
+        /* ステップ1：オープニング動画全画面表示 */
+        #page-intro-video {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0;
+            z-index: 10000; box-sizing: border-box; padding: 10px; text-align: center;
+        }
+        .intro-video-container {
+            width: 100%; max-width: 600px; max-height: 80vh; background: #000; border: 1px solid #0f0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .intro-skip-btn {
+            background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px 20px;
+            font-size: 14px; cursor: pointer; border-radius: 4px; font-family: monospace; margin-top: 15px;
+        }
+        .intro-skip-btn:active { background: #0f0; color: #000; }
+
+        /* ステップ2：ロゴ＆注意点・作戦開始画面 */
+        #page-welcome { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0; z-index: 9999; box-sizing: border-box; padding: 20px; text-align: center; overflow-y: auto; }
+        .welcome-box { max-width: 450px; width: 100%; border: 1px solid #0f0; padding: 20px; background: #050505; box-shadow: 0 0 20px rgba(0,255,0,0.3); box-sizing: border-box; }
+        
+        /* ロゴ画像コンテナ（サイズ拡大対応） */
+        .game-logo-container { text-align: center; padding: 12px; background: #000; border: 1px solid #0f0; margin-bottom: 15px; box-shadow: 0 0 10px rgba(0,255,0,0.2); }
+        .game-logo-img { width: 100%; height: auto; max-height: 200px; object-fit: contain; display: block; margin: 0 auto; }
+        
+        .game-logo-main { margin: 0; font-family: monospace; font-size: 18px; color: #0f0; text-shadow: 0 0 8px rgba(0,255,0,0.6); letter-spacing: 2px; }
+        .game-logo-sub { font-size: 10px; color: #888; letter-spacing: 1px; margin-top: 4px; border-top: 1px dashed #030; padding-top: 4px; }
+
+        .start-btn { background: #000; color: #0f0; border: 2px solid #0f0; padding: 12px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; box-shadow: 0 0 10px rgba(0,255,0,0.4); transition: 0.2s; font-family: monospace; width: 100%; margin-top: 15px; }
         .start-btn:active { background: #0f0; color: #000; }
 
-        /* ヘッダー・ハンバーガーメニュー */
+        /* ==========================================
+           2. ヘッダー ＆ ナビゲーションメニュー
+           ========================================== */
         .header { height: 50px; background: #111; border-bottom: 1px solid #0f0; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; position: relative; z-index: 1001; }
         .hamburger-btn { background: none; border: none; color: #0f0; font-size: 24px; cursor: pointer; }
 
-        /* タイマーの数字幅を完全に固定し、ガタつきを防ぐ */
-        #mini-timer {
-            font-family: monospace;
-            font-variant-numeric: tabular-nums;
-            min-width: 65px;
-            text-align: right;
-            display: inline-block;
-        }
+        /* タイマーのガタつきを防ぐ等幅設定 */
+        #mini-timer { font-family: monospace; font-variant-numeric: tabular-nums; min-width: 65px; text-align: right; display: inline-block; }
         
-        /* ナビゲーションメニュー */
+        /* スライド式メニューバー */
         .nav-menu { position: fixed; top: 50px; left: -100%; width: 250px; height: calc(100% - 50px); background: rgba(0, 0, 0, 0.95); border-right: 1px solid #0f0; transition: 0.3s; z-index: 1000; padding: 20px; box-sizing: border-box; }
         .nav-menu.open { left: 0; }
         .nav-item { display: block; color: #0f0; text-decoration: none; padding: 12px 0; border-bottom: 1px dashed #030; font-size: 16px; cursor: pointer; }
         .nav-item:hover { background: #002200; }
 
-        /* 画面コンテナ */
+        /* 各コンテンツ画面の共通コンテナ */
         .page { display: none; height: calc(100vh - 50px); width: 100%; box-sizing: border-box; padding: 15px; overflow-y: auto; }
         .page.active { display: block; }
 
-        /* マップ関連 */
+        /* ==========================================
+           3. マップ ＆ ステータスカード
+           ========================================== */
         #map-container { position: relative; height: 100%; width: 100%; }
         #map { height: 100%; width: 100%; }
         .map-control-btn { position: absolute; bottom: 20px; right: 20px; z-index: 999; background: #000; color: #0f0; border: 2px solid #0f0; padding: 10px 15px; font-weight: bold; cursor: pointer; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,255,0,0.3); }
 
         .status-card { border: 1px solid #0f0; padding: 15px; margin-bottom: 15px; background: #050505; }
         
-        /* 謎解きタブ用スタイル */
-        .puzzle-tab-btn { background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px 12px; margin-right: 5px; cursor: pointer; font-family: monospace; }
+        /* ミッションファイル（タブ＆コンテンツ） */
+        .puzzle-tab-btn { background: #000; color: #0f0; border: 1px solid #0f0; padding: 6px 10px; margin-right: 4px; margin-bottom: 5px; cursor: pointer; font-family: monospace; font-size: 11px; }
         .puzzle-tab-btn.active-puzzle { background: #0f0; color: #000; font-weight: bold; }
         .puzzle-content { display: none; border: 1px solid #0f0; padding: 15px; margin-top: 10px; background: #050505; }
         .puzzle-content.active-puzzle { display: block; }
 
-        /* 電波強度バロメータのスタイル */
-        .signal-container {
-            margin-top: 8px;
-            background: #000;
-            border: 1px solid #0f0;
-            padding: 8px;
-            box-sizing: border-box;
-        }
-        .signal-label {
-            font-size: 11px;
-            margin-bottom: 4px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .signal-bar-bg {
-            width: 100%;
-            height: 10px;
-            background: #111;
-            border: 1px solid #333;
-            position: relative;
-            overflow: hidden;
-        }
-        .signal-bar-fill {
-            height: 100%;
-            width: 0%;
-            transition: width 0.3s ease, background-color 0.3s ease;
-        }
+        /* ==========================================
+           4. 信号強度（シグナル）バロメータ
+           ========================================== */
+        .signal-container { margin-top: 8px; background: #000; border: 1px solid #0f0; padding: 8px; box-sizing: border-box; }
+        .signal-label { font-size: 11px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .signal-bar-bg { width: 100%; height: 10px; background: #111; border: 1px solid #333; position: relative; overflow: hidden; }
+        .signal-bar-fill { height: 100%; width: 0%; transition: width 0.3s ease, background-color 0.3s ease; }
         .sig-green { background-color: #0f0; box-shadow: 0 0 5px #0f0; }
         .sig-yellow { background-color: #ff0; box-shadow: 0 0 5px #ff0; }
         .sig-red { background-color: #f00; box-shadow: 0 0 8px #f00; animation: pulseRed 0.8s infinite alternate; }
 
-        @keyframes pulseRed {
-            0% { opacity: 0.6; }
-            100% { opacity: 1.0; }
-        }
+        @keyframes pulseRed { 0% { opacity: 0.6; } 100% { opacity: 1.0; } }
 
-        /* カスタム・アクセス拒否ダイアログ（モーダル） */
-        #custom-dialog-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.85);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-        }
-        .custom-dialog-box {
-            background: #050505;
-            border: 2px solid #f00;
-            color: #f00;
-            padding: 20px;
-            width: 80%;
-            max-width: 320px;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
-            font-family: monospace;
-            border-radius: 4px;
-        }
-        .custom-dialog-btn {
-            background: #000;
-            color: #f00;
-            border: 1px solid #f00;
-            padding: 8px 20px;
-            margin-top: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            font-family: monospace;
-        }
-        .custom-dialog-btn:hover {
-            background: #f00;
-            color: #000;
-        }
+        /* ==========================================
+           5. アラート・ダイアログ・アニメーション
+           ========================================== */
+        /* カスタムモーダルダイアログ */
+        #custom-dialog-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); display: none; align-items: center; justify-content: center; z-index: 99999; }
+        .custom-dialog-box { background: #050505; border: 2px solid #f00; color: #f00; padding: 20px; width: 80%; max-width: 320px; text-align: center; box-shadow: 0 0 20px rgba(255, 0, 0, 0.4); font-family: monospace; border-radius: 4px; }
+        .custom-dialog-btn { background: #000; color: #f00; border: 1px solid #f00; padding: 8px 20px; margin-top: 15px; font-weight: bold; cursor: pointer; font-family: monospace; }
+        .custom-dialog-btn:hover { background: #f00; color: #000; }
 
-        /* スパイアイコンのアニメーション */
+        /* スパイアイコンの呼吸アニメーション */
         .spy-icon { animation: breathing 2s ease-in-out infinite; transform-origin: 50% 50%; overflow: hidden; }
         @keyframes breathing { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
         .custom-spy-icon { background: transparent !important; border: none !important; display: flex !important; align-items: center; justify-content: center; }
-        
-        .spy-icon.stopped {
-            filter: grayscale(100%) brightness(50%);
-            opacity: 0.6;
-            animation: none;
-        }
+        .spy-icon.stopped { filter: grayscale(100%) brightness(50%); opacity: 0.6; animation: none; }
 
-        /* 画面警告フラッシュ用オーバーレイ */
-        #alert-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: rgba(255, 0, 0, 0);
-            pointer-events: none;
-            z-index: 99999;
-            transition: background-color 0.2s ease;
-        }
-        @keyframes flashRed {
-            0% { background-color: rgba(255, 0, 0, 0); }
-            50% { background-color: rgba(255, 0, 0, 0.6); }
-            100% { background-color: rgba(255, 0, 0, 0); }
-        }
-        .flashing {
-            animation: flashRed 1.0s ease-in-out 3;
-        }
+        /* 画面全体が赤くフラッシュする演出 */
+        #alert-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(255, 0, 0, 0); pointer-events: none; z-index: 99999; transition: background-color 0.2s ease; }
+        @keyframes flashRed { 0% { background-color: rgba(255, 0, 0, 0); } 50% { background-color: rgba(255, 0, 0, 0.6); } 100% { background-color: rgba(255, 0, 0, 0); } }
+        .flashing { animation: flashRed 1.0s ease-in-out 3; }
 
-        /* システム復旧・奇襲警告メッセージバッジ */
-        #recovery-warning-banner {
-            position: fixed;
-            top: 30%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.95);
-            border: 2px solid #f00;
-            color: #f00;
-            padding: 20px;
-            text-align: center;
-            z-index: 100000;
-            display: none;
-            border-radius: 8px;
-            box-shadow: 0 0 25px rgba(255,0,0,0.7);
-            font-family: monospace;    
-        }
+        /* 緊急警告バナー */
+        #recovery-warning-banner { position: fixed; top: 30%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.95); border: 2px solid #f00; color: #f00; padding: 20px; text-align: center; z-index: 100000; display: none; border-radius: 8px; box-shadow: 0 0 25px rgba(255,0,0,0.7); font-family: monospace; }
 
-        /* ターミナル風の文字ストリーム表示エリア */
-        .terminal-stream-box {
-            background: #000;
-            border: 1px solid #0f0;
-            color: #0f0;
-            font-family: monospace;
-            font-size: 11px;
-            padding: 10px;
-            height: 120px;
-            overflow-y: hidden;
-            text-align: left;
-            box-sizing: border-box;
-            margin-top: 10px;
-            position: relative;
-        }
-        .terminal-stream-box::after {
-            content: "";
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 30px;
-            background: linear-gradient(transparent, #000);
-            pointer-events: none;
-        }
-        .stream-line {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            line-height: 1.4;
-        }
+        /* ターミナル風ログストリームエリア */
+        .terminal-stream-box { background: #000; border: 1px solid #0f0; color: #0f0; font-family: monospace; font-size: 11px; padding: 10px; height: 120px; overflow-y: hidden; text-align: left; box-sizing: border-box; margin-top: 10px; position: relative; }
+        .terminal-stream-box::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; background: linear-gradient(transparent, #000); pointer-events: none; }
+        .stream-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
     </style>
 </head>
 <body>
-    <!-- カスタム・アクセス拒否ダイアログ用オーバーレイ -->
+    <!-- アクセス拒否・エラー用モーダルダイアログ -->
     <div id="custom-dialog-overlay">
         <div class="custom-dialog-box">
             <h3 style="margin-top: 0; font-size: 16px;">⚠️ ACCESS DENIED</h3>
@@ -219,48 +128,72 @@
         </div>
     </div>
 
-    <!-- 画面警告フラッシュ用オーバーレイ -->
+    <!-- 画面赤色フラッシュ用オーバーレイ -->
     <div id="alert-overlay"></div>
 
-    <!-- システム復旧・奇襲警告バッジ -->
+    <!-- システム警告・奇襲通知バナー -->
     <div id="recovery-warning-banner">
         <h2 id="banner-title" style="margin: 0 0 10px 0; font-size: 18px;">⚠️ EMERGENCY ALERT ⚠️</h2>
         <p id="banner-text" style="margin: 0; font-size: 13px; color: #ff0; line-height: 1.5;">
-            敵の活動が検知されました！<br>スパイが逃走を開始しました！
+            あの国の活動が検知されました！<br>スパイが活動を開始しました！
         </p>
     </div>
 
-    <!-- 初期ウェルカム画面（ゲーム開始ボタン） -->
+    <!-- 【ステップ1】オープニング動画全画面表示画面 -->
+    <div id="page-intro-video">
+        <div class="intro-video-container">
+            <video id="intro-vid" src="./opening.mp4" controls playsinline autoplay style="width: 100%; max-height: 65vh; object-fit: contain; background: #000;"></video>
+            <button class="intro-skip-btn" onclick="finishIntroVideo()">動画をスキップ</button>
+        </div>
+    </div>
+
+    <!-- 【ステップ2】ロゴ・安全注意喚起 ＆ 作戦開始画面 -->
     <div id="page-welcome">
-        <h2 style="color: #0f0; margin-bottom: 10px;">■ 秘匿作戦システム</h2>
-        <p style="color: #888; font-size: 13px; max-width: 300px; line-height: 1.6;">
-            本作戦を遂行するため、位置情報（GPS）のアクセス許可が必要です。
-        </p>
-        <button class="start-btn" onclick="requestPermissionsAndStart()">ゲームを始める</button>
+        <div class="welcome-box">
+            <!-- ロゴ画像表示（読み込み失敗時はテキストにフォールバック） -->
+            <div class="game-logo-container">
+                <img src="./img/logo.jpeg" alt="PROJECT: OMEGA - YOKOHAMA LEGACY" class="game-logo-img" onerror="this.style.display='none'; document.getElementById('fallback-logo').style.display='block';">
+                <div id="fallback-logo" style="display:none;">
+                    <div style="font-size: 9px; color: #ff5500; letter-spacing: 2px; margin-bottom: 2px;">[CLASSIFIED OPERATION]</div>
+                    <h1 class="game-logo-main">PROJECT: OMEGA</h1>
+                    <div class="game-logo-sub">YOKOHAMA LEGACY</div>
+                </div>
+            </div>
+
+            <p style="color: #ccc; font-size: 15px; line-height: 1.5; margin-bottom: 15px; text-align: left;">
+                【エージェントへの指令とお願い】<br>
+                ・制限時間：2時間<br>
+                ・周囲の安全に注意し、歩きスマホは絶対におやめください。<br>
+                ・歩道や公共のルールを厳守し、絶対に走らないこと。
+            </p>
+
+            <button class="start-btn" onclick="requestPermissionsAndStart()">作戦開始（GPS許可）</button>
+        </div>
     </div>
 
+    <!-- アプリ共通ヘッダー -->
     <div class="header">
         <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
         <div id="header-title" style="font-weight: bold;">作戦司令室</div>
         <div id="mini-timer" style="font-size: 12px; font-variant-numeric: tabular-nums; min-width: 60px; text-align: right;">--分--秒</div>
     </div>
 
-    <!-- ハンバーガーメニュー -->
+    <!-- ハンバーガーメニュー（サイドナビゲーション） -->
     <div id="nav-menu" class="nav-menu">
         <div style="margin-bottom: 20px; font-weight: bold; border-bottom: 1px solid #0f0; padding-bottom: 5px;">■ MENU</div>
         <a class="nav-item" onclick="switchPage('page-home')">01. トップ画面（司令室）</a>
         <a class="nav-item" onclick="switchPage('page-map')">02. マップ（追跡モニター）</a>
         <a class="nav-item" onclick="switchPage('page-hack')">03. ハッキング</a>
-        <a class="nav-item" onclick="switchPage('page-puzzle')">04. ミッション・問題一覧</a>
+        <a class="nav-item" onclick="switchPage('page-puzzle')">04. ミッションファイル</a>
     </div>
 
-    <!-- 01. トップ画面 -->
+    <!-- 01. トップ画面（司令室） -->
     <div id="page-home" class="page">
         <div class="status-card">
             <h3>【作戦ステータス】</h3>
             <p id="my-pos-text">現在地: 取得中...</p>
             <p id="home-dist">ターゲットとの距離: 待機中...</p>
-            <!-- 電波強度バロメータ -->
+            <!-- 信号強度ゲージ -->
             <div class="signal-container">
                 <div class="signal-label">
                     <span>信号強度 (SIGNAL)</span>
@@ -280,11 +213,11 @@
         </div>
     </div>
 
-    <!-- 02. マップ画面 -->
+    <!-- 02. マップ画面（追跡モニター） -->
     <div id="page-map" class="page" style="padding: 0;">
         <div id="map-container">
             <div id="map"></div>
-            <!-- 左上に配置する距離バッジ ＆ ゲージ -->
+            <!-- マップ左上の距離・信号バッジ -->
             <div id="map-dist-badge" style="position: absolute; top: 15px; left: 15px; z-index: 999; background: rgba(0,0,0,0.85); border: 1px solid #0f0; padding: 10px; font-size: 12px; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,255,0,0.3); min-width: 170px; box-sizing: border-box;">
                 <div id="map-dist-text" style="margin-bottom: 6px; color: #0f0;">ターゲット距離: 待機中</div>
                 <div style="width: 100%; height: 6px; background: #111; border: 1px solid #333; overflow: hidden; border-radius: 2px;">
@@ -295,22 +228,20 @@
         </div>
     </div>
 
-    <!-- 03. ハッキング画面 -->
+    <!-- 03. ハッキング画面（侵入ツール） -->
     <div id="page-hack" class="page">
         <h3>💻 敵システム・侵入ツール</h3>
         
-        <!-- ステップ1: 傍受ボタン -->
+        <!-- ステップ1：パケット無線傍受 -->
         <div id="hack-step1">
             <p>📡 敵の無線通信を傍受・解析せよ。</p>
             <button id="intercept-btn" onclick="startIntercept()" style="background:#000; color:#0f0; border:1px solid #0f0; padding:10px 20px;">傍受を開始</button>
             
-            <!-- 文字が流れるターミナル風コンテナ ＆ 連動プログレスバー -->
             <div id="intercept-progress-container" style="display:none; margin:15px 0;">
                 <div style="font-size:10px; margin-bottom:5px; display:flex; justify-content:space-between;">
                     <span>[SYSTEM] パケット解析中...</span>
                     <span id="intercept-percent-text">0%</span>
                 </div>
-                <!-- ログ連動プログレスバー -->
                 <div style="width:100%; height:8px; border:1px solid #0f0; margin-bottom:8px; background:#111;">
                     <div id="intercept-log-bar" style="width:0%; height:100%; background:#0f0; transition:width 0.2s ease;"></div>
                 </div>
@@ -318,14 +249,14 @@
             </div>
         </div>
 
-        <!-- ステップ2: 謎解き -->
+        <!-- ステップ2：解読キー入力 -->
         <div id="hack-step2" style="display:none; margin-top:20px;">
             <p id="intercepted-message" style="color:#ff0; border:1px dashed #ff0; padding:10px;"></p>
             <input type="text" id="code-input" placeholder="解読キーを入力 (例: YOKOHAMA)" style="background:#000; color:#0f0; border:1px solid #0f0; padding:8px; width:70%;">
             <button onclick="startHack()" style="background:#0f0; border:none; padding:9px; font-weight:bold;">侵入実行</button>
         </div>
 
-        <!-- ステップ3: 実行中プログレス -->
+        <!-- ステップ3：エクスプロイト展開プログレス -->
         <div id="hack-step3" style="display:none; margin-top:20px;">
             <div style="font-size:10px; margin-bottom:5px;">[SYSTEM] エクスプロイト展開中...</div>
             <div style="width:100%; height:20px; border:1px solid #0f0;"><div id="hack-bar" style="width:0%; height:100%; background:#f00;"></div></div>
@@ -333,20 +264,23 @@
         </div>
     </div>
 
-    <!-- 04. 謎解き画面 -->
+    <!-- 04. ミッションファイル（海沿いルートの謎解き） -->
     <div id="page-puzzle" class="page">
         <h3>🧩 ミッションファイル</h3>
-        <p style="font-size: 12px; color: #888;">各ステージの暗号を解き、次の目的地を割り出せ。</p>
+        <p style="font-size: 12px; color: #888;">横浜の海沿いを巡り、岡本正造の遺した暗号を解き明かせ。</p>
         
+        <!-- ステージ切り替えタブ -->
         <div style="margin-bottom: 15px; overflow-x: auto; white-space: nowrap;">
             <button class="puzzle-tab-btn active-puzzle" onclick="switchPuzzle('p1', this)">Stage 1</button>
             <button class="puzzle-tab-btn" onclick="switchPuzzle('p2', this)">Stage 2</button>
             <button class="puzzle-tab-btn" onclick="switchPuzzle('p3', this)">Stage 3</button>
-            <button class="puzzle-tab-btn" onclick="switchPuzzle('p4', this)">Final Stage</button>
+            <button class="puzzle-tab-btn" onclick="switchPuzzle('p4', this)">Stage 4</button>
+            <button class="puzzle-tab-btn" onclick="switchPuzzle('p5', this)">Final</button>
         </div>
 
+        <!-- Stage 1：山下公園 -->
         <div id="p1" class="puzzle-content active-puzzle">
-            <h4>■ ステージ1：始まりの地点</h4>
+            <h4>■ ステージ1：始まりの地点（山下公園）</h4>
             <p><strong>【問題】</strong><br>港町を見下ろす赤い靴の少女像、その近くに眠る最初のキーワードを見つけ出せ。</p>
             <div style="margin-top: 10px;">
                 <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
@@ -355,8 +289,9 @@
             <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 山下公園の周辺を探索せよ。</p>
         </div>
 
+        <!-- Stage 2：氷川丸 -->
         <div id="p2" class="puzzle-content">
-            <h4>■ ステージ2：鋼鉄の巨人</h4>
+            <h4>■ ステージ2：鋼鉄の巨人（氷川丸）</h4>
             <p><strong>【問題】</strong><br>海に浮かぶ巨大な歴史的船舶。そのスクリュー付近に隠された数字の合計は？</p>
             <div style="margin-top: 10px;">
                 <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
@@ -365,32 +300,47 @@
             <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 氷川丸の看板や案内板を注視せよ。</p>
         </div>
 
+        <!-- Stage 3：くじらの背中 -->
         <div id="p3" class="puzzle-content">
-            <h4>■ ステージ3：赤レンガの迷宮</h4>
+            <h4>■ ステージ3：洋上の見張り台（くじらの背中）</h4>
+            <p><strong>【問題】</strong><br>波間に浮かぶ巨大なクジラの背中。そのウッドデッキの先端に刻まれた、座標を示す数字を暴け。</p>
+            <div style="margin-top: 10px;">
+                <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
+                <button style="background:#0f0; border:none; padding:6px; font-weight:bold;">認証</button>
+            </div>
+            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 大さん橋の屋上（くじらの背中）の先端を確認せよ。</p>
+        </div>
+
+        <!-- Stage 4：赤レンガ倉庫 -->
+        <div id="p4" class="puzzle-content">
+            <h4>■ ステージ4：赤レンガの迷宮（赤レンガ倉庫）</h4>
             <p><strong>【問題】</strong><br>歴史ある倉庫群のなかに刻まれた、かつてのレンガ職人のイニシャルを繋げ。</p>
             <div style="margin-top: 10px;">
                 <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
                 <button style="background:#0f0; border:none; padding:6px; font-weight:bold;">認証</button>
             </div>
-            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 敷地内のモニュメントの足元に注目。</p>
+            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 赤レンガ倉庫の壁面やモニュメントに注目せよ。</p>
         </div>
 
-        <div id="p4" class="puzzle-content">
-            <h4>■ ファイナルステージ：最終暗号</h4>
-            <p><strong>【問題】</strong><br>すべての情報を統合せよ。スパイが最後に潜伏するロッカーの暗証番号は？</p>
+        <!-- Final Stage：日本丸周辺 -->
+        <div id="p5" class="puzzle-content">
+            <h4>■ ファイナルステージ：造船の記憶（日本丸周辺）</h4>
+            <p><strong>【問題】</strong><br>すべての情報を統合せよ。かつての巨大ドックが眠るこの地で、スパイが狙う中枢データの解読キーは？</p>
             <div style="margin-top: 10px;">
                 <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
                 <button style="background:#0f0; border:none; padding:6px; font-weight:bold;">認証</button>
             </div>
-            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: これまで集めたピースを組み合わせろ。</p>
+            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: これまで集めたすべてのピースを組み合わせろ。</p>
         </div>
     </div>
 
-    <!-- Leaflet JS & Rotated Marker Plugin -->
+    <!-- Leaflet JS ＆ Leaflet Rotate Plugin -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotate-map@0.3.1/dist/leaflet-rotate-map.js"></script>
     <script>
-        // --- 変数定義 ---
+        /* ==========================================
+           6. ゲーム状態管理用グローバル変数
+           ========================================== */
         let map, myMarker, enemyMarker;
         let baseStationMarkers = [];
         let currentMyPos = { lat: 0, lng: 0 };
@@ -400,34 +350,42 @@
         
         let isSpyActive = false;
         let startTime = 0; 
-        const totalDurationMs = 120 * 60 * 1000; // 120分
-        const spyActivationDelayMs = 0 * 60 * 1000; // 5分後にスパイ起動
-        
+        const totalDurationMs = 120 * 60 * 1000; // 制限時間：120分（2時間）
+        const spyActivationDelayMs = 0.2 * 60 * 1000; // スパイ活動開始までの遅延時間
 
+        // スパイの移動ルート座標配列
         const spyRoute = [
             [35.4500, 139.6500], [35.4480, 139.6480], [35.4460, 139.6450], [35.4450, 139.6400]
         ];
 
+        // 敵の通信基地局の初期配置位置
         const baseStations = [
-            { lat: 35.4520, lng: 139.6520, name: "敵通信基地局 01 (北区)" },
-            { lat: 35.4440, lng: 139.6380, name: "敵通信基地局 02 (湾岸区)" }
+            { lat: 35.4520, lng: 139.6520, name: "敵通信基地局 01 (山下公園エリア)" },
+            { lat: 35.4440, lng: 139.6380, name: "敵通信基地局 02 (赤レンガエリア)" }
         ];
 
         let spyIconNormal, spyIconStopped;
+        let globalAudioCtx = null; // 💡 音声コンテキスト保持用
 
+        /* ==========================================
+           7. アプリ初期化・マップ構築
+           ========================================== */
         window.addEventListener('DOMContentLoaded', () => {
+            // Leafletマップの初期化
             map = L.map('map', {
                 rotate: true,
                 touchRotate: true,
                 rotateControl: true,
                 zoomControl: false
-            }).setView([35.4475, 139.6465], 16);
+            }).setView([35.4475, 139.6465], 15);
 
             L.control.zoom({ position: 'topright' }).addTo(map);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
+            // プレイヤー位置マーカーの作成
             myMarker = L.marker([0, 0]).addTo(map).bindPopup("現在地");
 
+            // 敵通信基地局マーカーの作成
             baseStations.forEach(station => {
                 const marker = L.marker([station.lat, station.lng], {
                     icon: L.divIcon({
@@ -440,6 +398,7 @@
                 baseStationMarkers.push(marker);
             });
 
+            // スパイアイコン（通常時）
             spyIconNormal = L.divIcon({ 
                 html: '<div class="spy-icon" style="width:90px; height:90px; display:flex; align-items:center; justify-content:center;">' +
                       '<img src="./img/spy.png" style="width:100%; height:100%; object-fit:contain; display:block;">' +
@@ -449,6 +408,7 @@
                 iconAnchor: [45, 45] 
             });
 
+            // スパイアイコン（停止・ハッキング成功時）
             spyIconStopped = L.divIcon({ 
                 html: '<div class="spy-icon stopped" style="width:90px; height:90px; display:flex; align-items:center; justify-content:center;">' +
                       '<img src="./img/spy.png" style="width:100%; height:100%; object-fit:contain; display:block;">' +
@@ -459,34 +419,90 @@
             });
 
             enemyMarker = L.marker(spyRoute[0], { icon: spyIconNormal });
+
+            // オープニング動画終了時の自動画面遷移リスナー
+            const introVid = document.getElementById('intro-vid');
+            if (introVid) {
+                introVid.addEventListener('ended', () => {
+                    finishIntroVideo();
+                });
+            }
         });
 
+        /* ==========================================
+           8. 画面遷移・ナビゲーション制御関数
+           ========================================== */
+        // オープニング動画からロゴ・注意点画面への切り替え
+        function finishIntroVideo() {
+            const introElem = document.getElementById('page-intro-video');
+            const welcomeElem = document.getElementById('page-welcome');
+            
+            if (introElem) introElem.style.display = 'none';
+            if (welcomeElem) welcomeElem.style.display = 'flex';
+        }
+
+        // 💡 【修正点】「作戦開始」ボタン押下時に位置情報を取得しつつ、Web Audio APIの再生許可（アンロック）を同時に行う
         function requestPermissionsAndStart() {
-            startTime = Date.now();
+            // ユーザーのタップ操作に紐づけてAudioContextを生成・即座に再生許可を通す
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    globalAudioCtx = new AudioCtx();
+                    if (globalAudioCtx.state === 'suspended') {
+                        globalAudioCtx.resume();
+                    }
+                    // 無音の短い音を鳴らしてオーディオのブロックを強制解除
+                    let dummyOsc = globalAudioCtx.createOscillator();
+                    let dummyGain = globalAudioCtx.createGain();
+                    dummyGain.gain.setValueAtTime(0.001, globalAudioCtx.currentTime);
+                    dummyOsc.connect(dummyGain);
+                    dummyGain.connect(globalAudioCtx.destination);
+                    dummyOsc.start();
+                    dummyOsc.stop(globalAudioCtx.currentTime + 0.05);
+                }
+            } catch (e) {
+                console.warn("Audio Context initialization failed:", e);
+            }
 
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
                         currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                        if (myMarker) myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
-                        if (map) map.setView([currentMyPos.lat, currentMyPos.lng], 16);
+                        if (myMarker) {
+                            myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
+                        }
+                        if (map) {
+                            map.setView([currentMyPos.lat, currentMyPos.lng], 16);
+                        }
                         isFirstLocationFix = false;
+
+                        startTime = Date.now();
+                        document.getElementById('page-welcome').style.display = 'none';
+                        switchPage('page-home');
                     },
                     (err) => {
-                        console.warn("位置情報の取得が拒否されました:", err.message);
+                        console.warn("位置情報の取得に失敗しました:", err.message);
+                        // 万が一位置情報が拒否された場合でもゲームを進められるようフォールバック処理を噛ませてスタートする
+                        startTime = Date.now();
+                        document.getElementById('page-welcome').style.display = 'none';
+                        switchPage('page-home');
                     },
-                    { enableHighAccuracy: true }
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
+            } else {
+                startTime = Date.now();
+                document.getElementById('page-welcome').style.display = 'none';
+                switchPage('page-home');
             }
-            document.getElementById('page-welcome').style.display = 'none';
-            switchPage('page-home');
         }
 
+        // ハンバーガーメニューの開閉切り替え
         function toggleMenu() {
             const menu = document.getElementById('nav-menu');
             menu.classList.toggle('open');
         }
 
+        // ページ（画面）の切り替え処理
         function switchPage(pageId) {
             const pages = document.querySelectorAll('.page');
             pages.forEach(p => p.classList.remove('active'));
@@ -499,10 +515,12 @@
             const menu = document.getElementById('nav-menu');
             menu.classList.remove('open');
 
+            // マップ画面を開いた際に表示崩れを防ぐためサイズを再計算
             if (pageId === 'page-map' && map) {
                 setTimeout(() => { map.invalidateSize(); }, 100);
             }
 
+            // ヘッダータイトルの動的変更
             const titles = {
                 'page-home': '作戦司令室',
                 'page-map': '追跡モニター（マップ）',
@@ -512,6 +530,7 @@
             document.getElementById('header-title').innerText = titles[pageId] || '作戦司令室';
         }
 
+        // ミッションファイルのステージタブ切り替え
         function switchPuzzle(puzzleId, btnElement) {
             const contents = document.querySelectorAll('.puzzle-content');
             contents.forEach(c => c.classList.remove('active-puzzle'));
@@ -528,6 +547,9 @@
             }
         }
 
+        /* ==========================================
+           9. ハッキング・パケット解析システム
+           ========================================== */
         const streamLogs = [
             "INITIATING_SECURE_SOCKET_LAYER... [OK]",
             "CONNECT 192.168.10.55:443 - ENCRYPTION_AES256",
@@ -566,12 +588,11 @@
             "SYNCING_THREAD_POOLS: 8 workers active",
             "EVALUATING_HEURISTIC_THREAT_LEVEL: LOW",
             "DISABLING_KERNEL_DEBUG_FLAGS... [OK]",
-            "INJECTING_VIRTUAL_DELAY: 30-second stopper armed...",
+            "INJECTING_VIRTUAL_DELAY: 30-second stopper armed.",
             "BYPASS_VECTOR_LOCKED: Ready for authorization code.",
             "ACCESS_VECTOR_FOUND: Ready for input."
         ];
 
-        // --- ログ連動プログレスバー付きストリーム演出 ---
         function startIntercept() {
             document.getElementById('intercept-btn').style.display = 'none';
             document.getElementById('intercept-progress-container').style.display = 'block';
@@ -592,12 +613,11 @@
                     terminal.scrollTop = terminal.scrollHeight;
                     logIndex++;
 
-                    // 進捗率（％）を計算してプログレスバーとテキストを更新
                     const percent = Math.floor((logIndex / totalLogs) * 100);
                     document.getElementById('intercept-log-bar').style.width = percent + "%";
                     document.getElementById('intercept-percent-text').innerText = percent + "%";
 
-                    const randomDelay = Math.floor(Math.random() * 400) + 50; 
+                    const randomDelay = Math.floor(Math.random() * 400) + 100; 
                     setTimeout(appendNextLog, randomDelay);
                 } else {
                     setTimeout(() => {
@@ -625,67 +645,6 @@
             const overlay = document.getElementById('custom-dialog-overlay');
             if (overlay) {
                 overlay.style.display = 'none';
-            }
-        }
-
-        function triggerAlertEffects() {
-            const overlay = document.getElementById('alert-overlay');
-            try {
-                const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                if (AudioCtx) {
-                    const ctx = new AudioCtx();
-                    
-                    for (let setIdx = 0; setIdx < 3; setIdx++) {
-                        let setTimeOffset = setIdx * 3.8;
-
-                        setTimeout(() => {
-                            if (overlay) {
-                                overlay.classList.add('flashing');
-                                setTimeout(() => {
-                                    overlay.classList.remove('flashing');
-                                }, 3000);
-                            }
-                        }, setTimeOffset * 1000);
-
-                        for (let i = 0; i < 3; i++) {
-                            let startTime = ctx.currentTime + setTimeOffset + (i * 1.0);
-                            
-                             // 💡 工夫1: 音を太くするため、2つのオシレータを同時に作ります
-                            let osc1 = ctx.createOscillator();
-                            let osc2 = ctx.createOscillator();
-                            let gain = ctx.createGain();
-
-                            // 最もジリジリした倍音が含まれる「のこぎり波」を使用
-                            osc1.type = 'sine';
-                            osc2.type = 'square';
-
-                            // 60Hz
-                            osc1.frequency.setValueAtTime(60, startTime);
-                            osc2.frequency.setValueAtTime(60, startTime);
-                            
-                            // 💡 工夫3: ブザー独特の「ブツッ」とした荒々しい切れ味
-                            // gain.gain.setValueAtTime(0.4, startTime); 
-                            // 1秒間の終わりの方に、わずか0.05秒で急激に音量を落とす（フェードアウトをほぼ作らない）
-                            gain.gain.setValueAtTime(0.4, startTime + 0.8);
-                            gain.gain.linearRampToValueAtTime(0.001, startTime + 0.9);
-                            
-                            // 2つのオシレータを同じ1つのボリューム（gain）にまとめる
-                            osc1.connect(gain);
-                            osc2.connect(gain);
-                            gain.connect(ctx.destination);
-    
-                            // 同時にスタートして、同時にストップ
-                            osc1.start(startTime);
-                            osc2.start(startTime);
-                                                
-                            osc1.stop(startTime + 1.0);
-                            osc2.stop(startTime + 1.0);
-
-                        }
-                    }
-                }
-            } catch (e) {
-                console.warn("Audio alarm failed:", e);
             }
         }
 
@@ -725,19 +684,19 @@
                     }
 
                     document.getElementById('hack-result').innerHTML = 
-                        "<span style='color:#f00; text-size:25px;'>ACCESS GRANTED: 敵システム停止完了。</span>";
+                        "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。</span>";
 
                     setTimeout(() => {
                         isHacked = false;
 
                         if (enemyMarker && spyIconNormal) {
                             enemyMarker.setIcon(spyIconNormal);
-                            enemyMarker.bindPopup("【警告】スパイのシステムが復旧！逃走中！").openPopup();
+                            enemyMarker.bindPopup("【警告】敵のシステムが復旧！").openPopup();
                         }
 
                         const banner = document.getElementById('recovery-warning-banner');
                         document.getElementById('banner-title').innerText = "⚠️ SYSTEM RESTORED ⚠️";
-                        document.getElementById('banner-text').innerHTML = "敵のバックアップ回路が起動！<br>スパイが逃走を再開しました！";
+                        document.getElementById('banner-text').innerHTML = "敵のバックアップ回路が起動！<br>スパイが活動を再開しました！";
                         if (banner) {
                             banner.style.display = 'block';
                             setTimeout(() => {
@@ -752,26 +711,69 @@
             }, 30);
         }
 
+        /* ==========================================
+           10. アラート音声＆視覚効果（Web Audio API）
+           ========================================== */
+        function triggerAlertEffects() {
+            const overlay = document.getElementById('alert-overlay');
+            try {
+                // 作成済みのグローバルコンテキストを優先利用、なければ新規生成
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    const ctx = globalAudioCtx || new AudioCtx();
+                    if (ctx.state === 'suspended') {
+                        ctx.resume();
+                    }
+                    
+                    for (let setIdx = 0; setIdx < 3; setIdx++) {
+                        let setTimeOffset = setIdx * 3.8;
 
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition((pos) => {
-                currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                if (myMarker) {
-                    myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
-                }
+                        setTimeout(() => {
+                            if (overlay) {
+                                overlay.classList.add('flashing');
+                                setTimeout(() => {
+                                    overlay.classList.remove('flashing');
+                                }, 3000);
+                            }
+                        }, setTimeOffset * 1000);
 
-                if (isFirstLocationFix && map) {
-                    map.setView([currentMyPos.lat, currentMyPos.lng], 16);
-                    isFirstLocationFix = false;
-                }
+                        for (let i = 0; i < 3; i++) {
+                            let startTime = ctx.currentTime + setTimeOffset + (i * 1.0);
+                            
+                            let osc1 = ctx.createOscillator();
+                            let osc2 = ctx.createOscillator();
+                            let gain = ctx.createGain();
 
-                const myPosElem = document.getElementById('my-pos-text');
-                if (myPosElem) {
-                    myPosElem.innerText = `現在地: 緯度 ${currentMyPos.lat.toFixed(4)}, 経度 ${currentMyPos.lng.toFixed(4)}`;
+                            osc1.type = 'sine';
+                            osc2.type = 'square';
+
+                            osc1.frequency.setValueAtTime(60, startTime);
+                            osc2.frequency.setValueAtTime(60, startTime);
+                            
+                            gain.gain.setValueAtTime(0.4, startTime + 0.8);
+                            gain.gain.linearRampToValueAtTime(0.001, startTime + 0.9);
+                            
+                            osc1.connect(gain);
+                            osc2.connect(gain);
+                            gain.connect(ctx.destination);
+    
+                            osc1.start(startTime);
+                            osc2.start(startTime);
+                                                
+                            osc1.stop(startTime + 1.0);
+                            osc2.stop(startTime + 1.0);
+                        }
+                    }
                 }
-            }, null, { enableHighAccuracy: true });
+            } catch (e) {
+                console.warn("Audio alarm failed:", e);
+            }
         }
 
+        /* ==========================================
+           11. 位置情報追跡 ＆ メインループタイマー
+           ========================================== */
+        // 現在地へマップの中心を移動するボタン用関数
         function panToMyPosition() {
             if (currentMyPos.lat !== 0 && map) {
                 map.panTo([currentMyPos.lat, currentMyPos.lng]);
@@ -780,12 +782,14 @@
             }
         }
 
+        // 1秒ごとに実行されるメインのタイマー処理（残り時間計算・スパイ移動・信号強度更新）
         setInterval(() => {
             if (startTime === 0) return;
 
             const now = Date.now();
             const elapsed = now - startTime;
             
+            // スパイ活動開始判定
             if (!isSpyActive && elapsed >= spyActivationDelayMs) {
                 isSpyActive = true;
                 
@@ -796,7 +800,7 @@
 
                 const banner = document.getElementById('recovery-warning-banner');
                 document.getElementById('banner-title').innerText = "敵スパイ活動開始";
-                document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが活動を開始しました！追跡せよ！";
+                document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが移動を開始しました！";
                 if (banner) {
                     banner.style.display = 'block';
                     setTimeout(() => {
@@ -807,6 +811,7 @@
                 triggerAlertEffects();
             }
 
+            // スパイの移動アニメーション制御
             if (isSpyActive && !isHacked && enemyMarker) {
                 const activeElapsed = elapsed - spyActivationDelayMs;
                 const activeDurationMs = totalDurationMs - spyActivationDelayMs;
@@ -828,6 +833,7 @@
             let sigColorClass = "sig-green";
             let sigStatusText = "STANDBY";
 
+            // 距離および信号強度の算出
             if (currentMyPos.lat !== 0 && map) {
                 if (!isSpyActive) {
                     let minBaseDist = Infinity;
@@ -860,6 +866,7 @@
                 }
             }
             
+            // UI上の距離表示や信号バーを更新
             const homeDistElem = document.getElementById('home-dist');
             if (homeDistElem) homeDistElem.innerText = distText;
 
@@ -881,6 +888,7 @@
                 mapSigBar.className = "signal-bar-fill " + sigColorClass;
             }
 
+            // 残り制限時間の計算と画面表示の更新
             const timeLeftMs = Math.max(0, totalDurationMs - elapsed);
             const totalSec = Math.floor(timeLeftMs / 1000);
             const min = Math.floor(totalSec / 60);
