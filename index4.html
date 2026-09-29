@@ -802,3 +802,67 @@
     </script>
 </body>
 </html>
+
+
+
+
+function triggerAlertEffects() {
+            const overlay = document.getElementById('alert-overlay');
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    const ctx = new AudioCtx();
+                    
+                    for (let setIdx = 0; setIdx < 3; setIdx++) {
+                        let setTimeOffset = setIdx * 3.8;
+
+                        setTimeout(() => {
+                            if (overlay) {
+                                overlay.classList.add('flashing');
+                                setTimeout(() => {
+                                    overlay.classList.remove('flashing');
+                                }, 3000);
+                            }
+                        }, setTimeOffset * 1000);
+
+                        for (let i = 0; i < 3; i++) {
+                            let startTime = ctx.currentTime + setTimeOffset + (i * 1.0);
+                            
+                             // 💡 工夫1: 音を太くするため、2つのオシレータを同時に作ります
+                            let osc1 = ctx.createOscillator();
+                            let osc2 = ctx.createOscillator();
+                            let gain = ctx.createGain();
+
+                            // 最もジリジリした倍音が含まれる「のこぎり波」を使用
+                            osc1.type = 'sine';
+                            osc2.type = 'square';
+
+                            // 60Hz
+                            osc1.frequency.setValueAtTime(60, startTime);
+                            osc2.frequency.setValueAtTime(60, startTime);
+                            
+                            // 💡 工夫3: ブザー独特の「ブツッ」とした荒々しい切れ味
+                            // gain.gain.setValueAtTime(0.4, startTime); 
+                            // 1秒間の終わりの方に、わずか0.05秒で急激に音量を落とす（フェードアウトをほぼ作らない）
+                            gain.gain.setValueAtTime(0.4, startTime + 0.8);
+                            gain.gain.linearRampToValueAtTime(0.001, startTime + 0.9);
+                            
+                            // 2つのオシレータを同じ1つのボリューム（gain）にまとめる
+                            osc1.connect(gain);
+                            osc2.connect(gain);
+                            gain.connect(ctx.destination);
+    
+                            // 同時にスタートして、同時にストップ
+                            osc1.start(startTime);
+                            osc2.start(startTime);
+                                                
+                            osc1.stop(startTime + 1.0);
+                            osc2.stop(startTime + 1.0);
+
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Audio alarm failed:", e);
+            }
+        }

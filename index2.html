@@ -433,9 +433,11 @@
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition((pos) => {
                 currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
+                if (myMarker) {
+                    myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
+                }
 
-                if (isFirstLocationFix) {
+                if (isFirstLocationFix && map) {
                     map.setView([currentMyPos.lat, currentMyPos.lng], 16);
                     isFirstLocationFix = false;
                 }
@@ -448,10 +450,10 @@
         }
 
         function panToMyPosition() {
-            if (currentMyPos.lat !== 0) {
+            if (currentMyPos.lat !== 0 && map) {
                 map.panTo([currentMyPos.lat, currentMyPos.lng]);
             } else {
-                alert("現在地をまだ取得できていません。");
+                showCustomDialog("現在地をまだ取得できていません。");
             }
         }
 
