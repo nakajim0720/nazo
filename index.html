@@ -21,8 +21,8 @@
         /* タイマーの数字幅を完全に固定し、ガタつきを防ぐ */
         #mini-timer {
             font-family: monospace;
-            font-variant-numeric: tabular-nums; /* 数字の幅を等幅に強制 */
-            min-width: 65px; /* 表示領域の幅を固定 */
+            font-variant-numeric: tabular-nums;
+            min-width: 65px;
             text-align: right;
             display: inline-block;
         }
@@ -131,7 +131,6 @@
         @keyframes breathing { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
         .custom-spy-icon { background: transparent !important; border: none !important; display: flex !important; align-items: center; justify-content: center; }
         
-        /* スパイアイコンのグレーアウト（停止時） */
         .spy-icon.stopped {
             filter: grayscale(100%) brightness(50%);
             opacity: 0.6;
@@ -159,13 +158,13 @@
             animation: flashRed 1.0s ease-in-out 3;
         }
 
-        /* システム復旧警告メッセージバッジ（画面中央に表示） */
+        /* システム復旧・奇襲警告メッセージバッジ */
         #recovery-warning-banner {
             position: fixed;
             top: 30%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             border: 2px solid #f00;
             color: #f00;
             padding: 20px;
@@ -173,7 +172,7 @@
             z-index: 100000;
             display: none;
             border-radius: 8px;
-            box-shadow: 0 0 20px rgba(255,0,0,0.5);
+            box-shadow: 0 0 25px rgba(255,0,0,0.7);
             font-family: monospace;    
         }
 
@@ -223,11 +222,11 @@
     <!-- 画面警告フラッシュ用オーバーレイ -->
     <div id="alert-overlay"></div>
 
-    <!-- システム復旧警告バッジ -->
+    <!-- システム復旧・奇襲警告バッジ -->
     <div id="recovery-warning-banner">
-        <h2 style="margin: 0 0 10px 0; font-size: 18px;">⚠️ SYSTEM RESTORED ⚠️</h2>
-        <p style="margin: 0; font-size: 13px; color: #ff0; line-height: 1.5;">
-            敵のバックアップ回路が起動！<br>スパイが逃走を再開しました！
+        <h2 id="banner-title" style="margin: 0 0 10px 0; font-size: 18px;">⚠️ EMERGENCY ALERT ⚠️</h2>
+        <p id="banner-text" style="margin: 0; font-size: 13px; color: #ff0; line-height: 1.5;">
+            敵の活動が検知されました！<br>スパイが逃走を開始しました！
         </p>
     </div>
 
@@ -260,12 +259,12 @@
         <div class="status-card">
             <h3>【作戦ステータス】</h3>
             <p id="my-pos-text">現在地: 取得中...</p>
-            <p id="home-dist">スパイとの距離: -- m</p>
-            <!-- 電波強度バロメータ（追加） -->
+            <p id="home-dist">ターゲットとの距離: 待機中...</p>
+            <!-- 電波強度バロメータ -->
             <div class="signal-container">
                 <div class="signal-label">
                     <span>信号強度 (SIGNAL)</span>
-                    <span id="home-sig-status">--</span>
+                    <span id="home-sig-status">STANDBY</span>
                 </div>
                 <div class="signal-bar-bg">
                     <div id="home-sig-bar" class="signal-bar-fill"></div>
@@ -285,9 +284,9 @@
     <div id="page-map" class="page" style="padding: 0;">
         <div id="map-container">
             <div id="map"></div>
-            <!-- 左上に配置する距離バッジ ＆ ゲージ（構造を固定） -->
+            <!-- 左上に配置する距離バッジ ＆ ゲージ -->
             <div id="map-dist-badge" style="position: absolute; top: 15px; left: 15px; z-index: 999; background: rgba(0,0,0,0.85); border: 1px solid #0f0; padding: 10px; font-size: 12px; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,255,0,0.3); min-width: 170px; box-sizing: border-box;">
-                <div id="map-dist-text" style="margin-bottom: 6px; color: #0f0;">スパイとの距離: -- m</div>
+                <div id="map-dist-text" style="margin-bottom: 6px; color: #0f0;">ターゲット距離: 待機中</div>
                 <div style="width: 100%; height: 6px; background: #111; border: 1px solid #333; overflow: hidden; border-radius: 2px;">
                     <div id="map-sig-bar" class="signal-bar-fill" style="height: 100%; width: 0%;"></div>
                 </div>
@@ -385,19 +384,27 @@
     <script>
         // --- 変数定義 ---
         let map, myMarker, enemyMarker;
+        let baseStationMarkers = []; // 基地局マーカーの配列
         let currentMyPos = { lat: 0, lng: 0 };
         let isFirstLocationFix = true;
         let isHacked = false;
         let hasHackedOnce = false;
         
-        let startTime = 0; // 初期値は0にしておき、ゲーム開始時にセットする
+        let isSpyActive = false; // ★5分経過するまでスパイは非アクティブ
+        let startTime = 0; 
         const totalDurationMs = 120 * 60 * 1000; // 120分
+        const spyActivationDelayMs = 5 * 60 * 1000; // ★5分後にスパイ起動（テスト時は 10000 などに短縮可能）
 
         const spyRoute = [
-            [35.484396, 139.617826], [35.4500, 139.6500], [35.4480, 139.6480], [35.4460, 139.6450], [35.4450, 139.6400]
+            [35.4500, 139.6500], [35.4480, 139.6480], [35.4460, 139.6450], [35.4450, 139.6400]
         ];
 
-        // アイコンの定義
+        // 敵の通信基地局（初期からマップに表示する地点）
+        const baseStations = [
+            { lat: 35.4520, lng: 139.6520, name: "敵通信基地局 01 (北区)" },
+            { lat: 35.4440, lng: 139.6380, name: "敵通信基地局 02 (湾岸区)" }
+        ];
+
         let spyIconNormal, spyIconStopped;
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -413,6 +420,19 @@
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
             myMarker = L.marker([0, 0]).addTo(map).bindPopup("現在地");
+
+            // ★初期配置：敵の通信基地局をマップ上に配置する
+            baseStations.forEach(station => {
+                const marker = L.marker([station.lat, station.lng], {
+                    icon: L.divIcon({
+                        html: '<div style="background:#ff5500; width:16px; height:16px; border:2px solid #fff; border-radius:50%; box-shadow:0 0 8px #ff5500;"></div>',
+                        className: 'base-station-icon',
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                    })
+                }).addTo(map).bindPopup(`【敵基地局】<br>${station.name}`);
+                baseStationMarkers.push(marker);
+            });
 
             spyIconNormal = L.divIcon({ 
                 html: '<div class="spy-icon" style="width:90px; height:90px; display:flex; align-items:center; justify-content:center;">' +
@@ -432,10 +452,10 @@
                 iconAnchor: [45, 45] 
             });
 
-            enemyMarker = L.marker(spyRoute[0], { icon: spyIconNormal }).addTo(map).bindPopup("スパイ");
+            // ★スパイマーカーは初期状態ではまだマップに追加しない（非表示）
+            enemyMarker = L.marker(spyRoute[0], { icon: spyIconNormal });
         });
 
-        // --- 権限リクエスト & ゲーム開始処理 ---
         function requestPermissionsAndStart() {
             startTime = Date.now();
 
@@ -457,7 +477,6 @@
             switchPage('page-home');
         }
 
-        // --- 画面切り替え & メニュー制御 ---
         function toggleMenu() {
             const menu = document.getElementById('nav-menu');
             menu.classList.toggle('open');
@@ -488,7 +507,6 @@
             document.getElementById('header-title').innerText = titles[pageId] || '作戦司令室';
         }
 
-        // --- 謎解きタブ切り替え ---
         function switchPuzzle(puzzleId, btnElement) {
             const contents = document.querySelectorAll('.puzzle-content');
             contents.forEach(c => c.classList.remove('active-puzzle'));
@@ -505,142 +523,6 @@
             }
         }
 
-        // --- ハッキング・傍受ロジック ---
-        function startIntercept() {
-            document.getElementById('intercept-btn').style.display = 'none';
-            document.getElementById('intercept-progress-container').style.display = 'block';
-            
-            let bar = document.getElementById('intercept-bar');
-            let width = 0;
-            let interval = setInterval(() => {
-                width += 2;
-                bar.style.width = width + "%";
-                if (width >= 100) {
-                    clearInterval(interval);
-                    document.getElementById('hack-step2').style.display = 'block';
-                    document.getElementById('intercepted-message').innerText = "【傍受内容】: 『横浜の始まりの地、赤い靴を履いた少女が眺める先の……その場所が暗号の鍵となる。』";
-                }
-            }, 50);
-        }
-
-        // --- カスタムダイアログの表示制御 ---
-        function showCustomDialog(message) {
-            const overlay = document.getElementById('custom-dialog-overlay');
-            const textElem = document.getElementById('custom-dialog-text');
-            if (overlay && textElem) {
-                textElem.innerText = message;
-                overlay.style.display = 'flex';
-            }
-        }
-
-        function closeCustomDialog() {
-            const overlay = document.getElementById('custom-dialog-overlay');
-            if (overlay) {
-                overlay.style.display = 'none';
-            }
-        }
-
-        function startHack() {
-            if (hasHackedOnce) {
-                showCustomDialog("ACCESS DENIED: ファイアウォールが強化され、再度の侵入は不可能です。");
-                return;
-            }
-
-            const inputVal = document.getElementById('code-input').value;
-            if (inputVal !== "YOKOHAMA") {
-                showCustomDialog("ACCESS拒否：不正なキーです。正しい解読キーを入力してください。");
-                return;
-            }
-
-            hasHackedOnce = true;
-            document.getElementById('hack-step2').style.display = 'none';
-            document.getElementById('hack-step3').style.display = 'block';
-            
-            let bar = document.getElementById('hack-bar');
-            let width = 0;
-            let interval = setInterval(() => {
-                width += 1;
-                bar.style.width = width + "%";
-                if (width >= 100) {
-                    clearInterval(interval);
-                    isHacked = true;
-
-                    if (enemyMarker && spyIconStopped) {
-                        enemyMarker.setIcon(spyIconStopped);
-                        enemyMarker.bindPopup("【システム停止】スパイ足止め中").openPopup();
-                    }
-
-                    document.getElementById('hack-result').innerHTML = 
-                        "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。ただし、バックアップ回路により再起動が予測されます。</span>";
-
-                    // --- 一定時間（30秒後：テスト時は適宜変更可能）後に自動復旧 ---
-                    setTimeout(() => {
-                        isHacked = false; // スパイの活動再開
-
-                        // --- アイコンを通常用に復元 ---
-                        if (enemyMarker && spyIconNormal) {
-                            enemyMarker.setIcon(spyIconNormal);
-                            enemyMarker.bindPopup("【警告】スパイのシステムが復旧！逃走中！").openPopup();
-                        }
-
-                        // 1. 画面中央に警告バッジを表示し続ける
-                        const banner = document.getElementById('recovery-warning-banner');
-                        if (banner) {
-                            banner.style.display = 'block';
-                            setTimeout(() => {
-                                banner.style.display = 'none';
-                            }, 11000); // 11秒後に非表示
-                        }
-
-                        // 2. Web Audio API & 画面点滅を「3回セット」で実行（合計9回）
-                        const overlay = document.getElementById('alert-overlay');
-                        try {
-                            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                            if (AudioCtx) {
-                                const ctx = new AudioCtx();
-                                
-                                for (let setIdx = 0; setIdx < 3; setIdx++) {
-                                    let setTimeOffset = setIdx * 3.8; // 各セットの開始遅延（秒）
-
-                                    setTimeout(() => {
-                                        if (overlay) {
-                                            overlay.classList.add('flashing');
-                                            setTimeout(() => {
-                                                overlay.classList.remove('flashing');
-                                            }, 3000); // 3秒間点滅
-                                        }
-                                    }, setTimeOffset * 1000);
-
-                                    for (let i = 0; i < 3; i++) {
-                                        let startTime = ctx.currentTime + setTimeOffset + (i * 1.0);
-                                        
-                                        let osc = ctx.createOscillator();
-                                        let gain = ctx.createGain();
-                                        
-                                        osc.type = 'sawtooth';
-                                        osc.frequency.setValueAtTime(100, startTime); // 重低音
-                                        
-                                        gain.gain.setValueAtTime(0.4, startTime);
-                                        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.9);
-                                        
-                                        osc.connect(gain);
-                                        gain.connect(ctx.destination);
-                                        
-                                        osc.start(startTime);
-                                        osc.stop(startTime + 0.9);
-                                    }
-                                }
-                            }
-                        } catch (e) {
-                            console.warn("Audio alarm failed:", e);
-                        }
-
-                    }, 30000); // 30秒後にシステム復旧（テスト時は適宜短縮可能）
-                }
-            }, 30);
-        }
-
-        // --- リアルなストリームログのサンプル ---
         const streamLogs = [
             "INITIATING_SECURE_SOCKET_LAYER... [OK]",
             "CONNECT 192.168.10.55:443 - ENCRYPTION_AES256",
@@ -684,7 +566,6 @@
             "ACCESS_VECTOR_FOUND: Ready for input."
         ];
 
-        // --- 傍受・解析開始（文字が流れる演出付き） ---
         function startIntercept() {
             document.getElementById('intercept-btn').style.display = 'none';
             document.getElementById('intercept-progress-container').style.display = 'block';
@@ -701,7 +582,6 @@
                     p.innerText = "> " + streamLogs[logIndex];
                     terminal.appendChild(p);
                     
-                    // 自動スクロール
                     terminal.scrollTop = terminal.scrollHeight;
                     logIndex++;
 
@@ -720,7 +600,130 @@
             appendNextLog();
         }
 
-        // --- 位置情報の常時監視 ---
+        function showCustomDialog(message) {
+            const overlay = document.getElementById('custom-dialog-overlay');
+            const textElem = document.getElementById('custom-dialog-text');
+            if (overlay && textElem) {
+                textElem.innerText = message;
+                overlay.style.display = 'flex';
+            }
+        }
+
+        function closeCustomDialog() {
+            const overlay = document.getElementById('custom-dialog-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }
+
+        function startHack() {
+            if (!isSpyActive) {
+                showCustomDialog("ACCESS ERROR: ターゲット（スパイ）がまだ活動を開始していません。まずは基地局を調査し、スパイの出足を待て。");
+                return;
+            }
+
+            if (hasHackedOnce) {
+                showCustomDialog("ACCESS DENIED: ファイアウォールが強化され、再度の侵入は不可能です。");
+                return;
+            }
+
+            const inputVal = document.getElementById('code-input').value;
+            if (inputVal !== "YOKOHAMA") {
+                showCustomDialog("ACCESS拒否：不正なキーです。正しい解読キーを入力してください。");
+                return;
+            }
+
+            hasHackedOnce = true;
+            document.getElementById('hack-step2').style.display = 'none';
+            document.getElementById('hack-step3').style.display = 'block';
+            
+            let bar = document.getElementById('hack-bar');
+            let width = 0;
+            let interval = setInterval(() => {
+                width += 1;
+                bar.style.width = width + "%";
+                if (width >= 100) {
+                    clearInterval(interval);
+                    isHacked = true;
+
+                    if (enemyMarker && spyIconStopped) {
+                        enemyMarker.setIcon(spyIconStopped);
+                        enemyMarker.bindPopup("【システム停止】スパイ足止め中").openPopup();
+                    }
+
+                    document.getElementById('hack-result').innerHTML = 
+                        "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。ただし、バックアップ回路により再起動が予測されます。</span>";
+
+                    setTimeout(() => {
+                        isHacked = false;
+
+                        if (enemyMarker && spyIconNormal) {
+                            enemyMarker.setIcon(spyIconNormal);
+                            enemyMarker.bindPopup("【警告】スパイのシステムが復旧！逃走中！").openPopup();
+                        }
+
+                        const banner = document.getElementById('recovery-warning-banner');
+                        document.getElementById('banner-title').innerText = "⚠️ SYSTEM RESTORED ⚠️";
+                        document.getElementById('banner-text').innerHTML = "敵のバックアップ回路が起動！<br>スパイが逃走を再開しました！";
+                        if (banner) {
+                            banner.style.display = 'block';
+                            setTimeout(() => {
+                                banner.style.display = 'none';
+                            }, 11000);
+                        }
+
+                        triggerAlertEffects();
+
+                    }, 30000);
+                }
+            }, 30);
+        }
+
+        // 警告音と赤色フラッシュの演出関数
+        function triggerAlertEffects() {
+            const overlay = document.getElementById('alert-overlay');
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    const ctx = new AudioCtx();
+                    
+                    for (let setIdx = 0; setIdx < 3; setIdx++) {
+                        let setTimeOffset = setIdx * 3.8;
+
+                        setTimeout(() => {
+                            if (overlay) {
+                                overlay.classList.add('flashing');
+                                setTimeout(() => {
+                                    overlay.classList.remove('flashing');
+                                }, 3000);
+                            }
+                        }, setTimeOffset * 1000);
+
+                        for (let i = 0; i < 3; i++) {
+                            let startTime = ctx.currentTime + setTimeOffset + (i * 1.0);
+                            
+                            let osc = ctx.createOscillator();
+                            let gain = ctx.createGain();
+                            
+                            osc.type = 'sawtooth';
+                            osc.frequency.setValueAtTime(100, startTime);
+                            
+                            gain.gain.setValueAtTime(0.4, startTime);
+                            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.9);
+                            
+                            osc.connect(gain);
+                            gain.connect(ctx.destination);
+                            
+                            osc.start(startTime);
+                            osc.stop(startTime + 0.9);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Audio alarm failed:", e);
+            }
+        }
+
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition((pos) => {
                 currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -748,15 +751,43 @@
             }
         }
 
-        // --- 定期ループ処理（スパイ移動・距離・タイマー） ---
+        // --- 定期ループ処理（スパイ起動判定・移動・距離・タイマー） ---
         setInterval(() => {
-            if (startTime === 0) return; // ゲーム開始前はタイマーを進めない
+            if (startTime === 0) return;
 
             const now = Date.now();
             const elapsed = now - startTime;
             
-            if (!isHacked && enemyMarker) {
-                const progress = Math.min(elapsed / totalDurationMs, 1);
+            // ★ゲーム開始後、一定時間（5分）経過したらスパイをアクティブ化する
+            if (!isSpyActive && elapsed >= spyActivationDelayMs) {
+                isSpyActive = true;
+                
+                // スパイマーカーをマップに出現させる
+                if (enemyMarker && map) {
+                    enemyMarker.addTo(map);
+                    enemyMarker.bindPopup("【警告】敵スパイが活動を開始しました！").openPopup();
+                }
+
+                // 画面中央に奇襲警告バッジを表示
+                const banner = document.getElementById('recovery-warning-banner');
+                document.getElementById('banner-title').innerText = "🚨 敵スパイ活動開始 🚨";
+                document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが移動を開始しました！追跡せよ！";
+                if (banner) {
+                    banner.style.display = 'block';
+                    setTimeout(() => {
+                        banner.style.display = 'none';
+                    }, 11000);
+                }
+
+                // 警告音と点滅演出を発動
+                triggerAlertEffects();
+            }
+
+            // スパイがアクティブな場合のみ移動計算を行う
+            if (isSpyActive && !isHacked && enemyMarker) {
+                const activeElapsed = elapsed - spyActivationDelayMs;
+                const activeDurationMs = totalDurationMs - spyActivationDelayMs;
+                const progress = Math.min(activeElapsed / activeDurationMs, 1);
                 const totalSteps = spyRoute.length - 1;
                 const floatStep = progress * totalSteps;
                 const currentStep = Math.floor(floatStep);
@@ -769,32 +800,46 @@
                 enemyMarker.setLatLng([lat, lng]);
             }
 
-            let distText = "スパイとの距離: -- m";
+            let distText = "ターゲット距離: 待機中...";
             let sigPercent = 0;
             let sigColorClass = "sig-green";
-            let sigStatusText = "WEAK (遠距離)";
+            let sigStatusText = "STANDBY";
 
-            if (currentMyPos.lat !== 0 && enemyMarker && map) {
-                const dist = map.distance([currentMyPos.lat, currentMyPos.lng], enemyMarker.getLatLng());
-                distText = `スパイとの距離: ${Math.floor(dist)} m`;
-
-                const maxDist = 500;
-                let rawPercent = (1 - (Math.min(dist, maxDist) / maxDist)) * 100;
-                sigPercent = Math.max(5, Math.min(100, rawPercent));
-
-                if (dist <= 80) {
-                    sigColorClass = "sig-red";
-                    sigStatusText = "CRITICAL (超接近)";
-                } else if (dist <= 200) {
-                    sigColorClass = "sig-yellow";
-                    sigStatusText = "MODERATE (中距離)";
-                } else {
+            // ★スパイ未活動時は最寄りの「基地局」との距離をレーダー表示し、活動開始後は「スパイ」との距離に切り替える
+            if (currentMyPos.lat !== 0 && map) {
+                if (!isSpyActive) {
+                    // スパイ未活動時は最も近い基地局との距離を表示
+                    let minBaseDist = Infinity;
+                    baseStations.forEach(st => {
+                        const d = map.distance([currentMyPos.lat, currentMyPos.lng], [st.lat, st.lng]);
+                        if (d < minBaseDist) minBaseDist = d;
+                    });
+                    distText = `最寄りの基地局: ${Math.floor(minBaseDist)} m`;
+                    sigPercent = Math.max(10, Math.min(100, (1 - (Math.min(minBaseDist, 1000) / 1000)) * 100));
+                    sigStatusText = "RECON (偵察中)";
                     sigColorClass = "sig-green";
-                    sigStatusText = "WEAK (遠距離)";
+                } else if (enemyMarker) {
+                    // スパイ活動開始後はスパイとの距離を計測
+                    const dist = map.distance([currentMyPos.lat, currentMyPos.lng], enemyMarker.getLatLng());
+                    distText = `スパイとの距離: ${Math.floor(dist)} m`;
+
+                    const maxDist = 500;
+                    let rawPercent = (1 - (Math.min(dist, maxDist) / maxDist)) * 100;
+                    sigPercent = Math.max(5, Math.min(100, rawPercent));
+
+                    if (dist <= 80) {
+                        sigColorClass = "sig-red";
+                        sigStatusText = "CRITICAL (超接近)";
+                    } else if (dist <= 200) {
+                        sigColorClass = "sig-yellow";
+                        sigStatusText = "MODERATE (中距離)";
+                    } else {
+                        sigColorClass = "sig-green";
+                        sigStatusText = "WEAK (遠距離)";
+                    }
                 }
             }
             
-            // 1. トップ画面側のテキストとゲージ更新
             const homeDistElem = document.getElementById('home-dist');
             if (homeDistElem) homeDistElem.innerText = distText;
 
@@ -807,7 +852,6 @@
                 homeSigStatus.style.color = sigColorClass === "sig-red" ? "#f00" : (sigColorClass === "sig-yellow" ? "#ff0" : "#0f0");
             }
 
-            // 2. マップ画面側のバッジ＆ミニゲージ更新
             const mapDistText = document.getElementById('map-dist-text');
             if (mapDistText) mapDistText.innerText = distText;
 
@@ -817,7 +861,6 @@
                 mapSigBar.className = "signal-bar-fill " + sigColorClass;
             }
 
-            // 3. タイマー更新
             const timeLeftMs = Math.max(0, totalDurationMs - elapsed);
             const totalSec = Math.floor(timeLeftMs / 1000);
             const min = Math.floor(totalSec / 60);
