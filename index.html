@@ -304,9 +304,16 @@
             <p>📡 敵の無線通信を傍受・解析せよ。</p>
             <button id="intercept-btn" onclick="startIntercept()" style="background:#000; color:#0f0; border:1px solid #0f0; padding:10px 20px;">傍受を開始</button>
             
-            <!-- 文字が流れるターミナル風コンテナ -->
+            <!-- 文字が流れるターミナル風コンテナ ＆ 連動プログレスバー -->
             <div id="intercept-progress-container" style="display:none; margin:15px 0;">
-                <div style="font-size:10px; margin-bottom:5px;">[SYSTEM] パケット解析中...</div>
+                <div style="font-size:10px; margin-bottom:5px; display:flex; justify-content:space-between;">
+                    <span>[SYSTEM] パケット解析中...</span>
+                    <span id="intercept-percent-text">0%</span>
+                </div>
+                <!-- ログ連動プログレスバー -->
+                <div style="width:100%; height:8px; border:1px solid #0f0; margin-bottom:8px; background:#111;">
+                    <div id="intercept-log-bar" style="width:0%; height:100%; background:#0f0; transition:width 0.2s ease;"></div>
+                </div>
                 <div class="terminal-stream-box" id="stream-terminal"></div>
             </div>
         </div>
@@ -320,6 +327,7 @@
 
         <!-- ステップ3: 実行中プログレス -->
         <div id="hack-step3" style="display:none; margin-top:20px;">
+            <div style="font-size:10px; margin-bottom:5px;">[SYSTEM] エクスプロイト展開中...</div>
             <div style="width:100%; height:20px; border:1px solid #0f0;"><div id="hack-bar" style="width:0%; height:100%; background:#f00;"></div></div>
             <p id="hack-result"></p>
         </div>
@@ -384,22 +392,22 @@
     <script>
         // --- 変数定義 ---
         let map, myMarker, enemyMarker;
-        let baseStationMarkers = []; // 基地局マーカーの配列
+        let baseStationMarkers = [];
         let currentMyPos = { lat: 0, lng: 0 };
         let isFirstLocationFix = true;
         let isHacked = false;
         let hasHackedOnce = false;
         
-        let isSpyActive = false; // ★5分経過するまでスパイは非アクティブ
+        let isSpyActive = false;
         let startTime = 0; 
         const totalDurationMs = 120 * 60 * 1000; // 120分
-        const spyActivationDelayMs = 5 * 60 * 1000; // ★5分後にスパイ起動（テスト時は 10000 などに短縮可能）
+        const spyActivationDelayMs = 0 * 60 * 1000; // 5分後にスパイ起動
+        
 
         const spyRoute = [
             [35.4500, 139.6500], [35.4480, 139.6480], [35.4460, 139.6450], [35.4450, 139.6400]
         ];
 
-        // 敵の通信基地局（初期からマップに表示する地点）
         const baseStations = [
             { lat: 35.4520, lng: 139.6520, name: "敵通信基地局 01 (北区)" },
             { lat: 35.4440, lng: 139.6380, name: "敵通信基地局 02 (湾岸区)" }
@@ -408,7 +416,6 @@
         let spyIconNormal, spyIconStopped;
 
         window.addEventListener('DOMContentLoaded', () => {
-            // 地図の初期化
             map = L.map('map', {
                 rotate: true,
                 touchRotate: true,
@@ -421,7 +428,6 @@
 
             myMarker = L.marker([0, 0]).addTo(map).bindPopup("現在地");
 
-            // ★初期配置：敵の通信基地局をマップ上に配置する
             baseStations.forEach(station => {
                 const marker = L.marker([station.lat, station.lng], {
                     icon: L.divIcon({
@@ -452,7 +458,6 @@
                 iconAnchor: [45, 45] 
             });
 
-            // ★スパイマーカーは初期状態ではまだマップに追加しない（非表示）
             enemyMarker = L.marker(spyRoute[0], { icon: spyIconNormal });
         });
 
@@ -566,6 +571,7 @@
             "ACCESS_VECTOR_FOUND: Ready for input."
         ];
 
+        // --- ログ連動プログレスバー付きストリーム演出 ---
         function startIntercept() {
             document.getElementById('intercept-btn').style.display = 'none';
             document.getElementById('intercept-progress-container').style.display = 'block';
@@ -574,9 +580,10 @@
             terminal.innerHTML = "";
             
             let logIndex = 0;
+            const totalLogs = streamLogs.length;
 
             function appendNextLog() {
-                if (logIndex < streamLogs.length) {
+                if (logIndex < totalLogs) {
                     const p = document.createElement('div');
                     p.className = 'stream-line';
                     p.innerText = "> " + streamLogs[logIndex];
@@ -585,7 +592,12 @@
                     terminal.scrollTop = terminal.scrollHeight;
                     logIndex++;
 
-                    const randomDelay = Math.floor(Math.random() * 600); 
+                    // 進捗率（％）を計算してプログレスバーとテキストを更新
+                    const percent = Math.floor((logIndex / totalLogs) * 100);
+                    document.getElementById('intercept-log-bar').style.width = percent + "%";
+                    document.getElementById('intercept-percent-text').innerText = percent + "%";
+
+                    const randomDelay = Math.floor(Math.random() * 400) + 100; 
                     setTimeout(appendNextLog, randomDelay);
                 } else {
                     setTimeout(() => {
@@ -679,7 +691,6 @@
             }, 30);
         }
 
-        // 警告音と赤色フラッシュの演出関数
         function triggerAlertEffects() {
             const overlay = document.getElementById('alert-overlay');
             try {
@@ -751,24 +762,20 @@
             }
         }
 
-        // --- 定期ループ処理（スパイ起動判定・移動・距離・タイマー） ---
         setInterval(() => {
             if (startTime === 0) return;
 
             const now = Date.now();
             const elapsed = now - startTime;
             
-            // ★ゲーム開始後、一定時間（5分）経過したらスパイをアクティブ化する
             if (!isSpyActive && elapsed >= spyActivationDelayMs) {
                 isSpyActive = true;
                 
-                // スパイマーカーをマップに出現させる
                 if (enemyMarker && map) {
                     enemyMarker.addTo(map);
                     enemyMarker.bindPopup("【警告】敵スパイが活動を開始しました！").openPopup();
                 }
 
-                // 画面中央に奇襲警告バッジを表示
                 const banner = document.getElementById('recovery-warning-banner');
                 document.getElementById('banner-title').innerText = "🚨 敵スパイ活動開始 🚨";
                 document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが移動を開始しました！追跡せよ！";
@@ -779,11 +786,9 @@
                     }, 11000);
                 }
 
-                // 警告音と点滅演出を発動
                 triggerAlertEffects();
             }
 
-            // スパイがアクティブな場合のみ移動計算を行う
             if (isSpyActive && !isHacked && enemyMarker) {
                 const activeElapsed = elapsed - spyActivationDelayMs;
                 const activeDurationMs = totalDurationMs - spyActivationDelayMs;
@@ -805,10 +810,8 @@
             let sigColorClass = "sig-green";
             let sigStatusText = "STANDBY";
 
-            // ★スパイ未活動時は最寄りの「基地局」との距離をレーダー表示し、活動開始後は「スパイ」との距離に切り替える
             if (currentMyPos.lat !== 0 && map) {
                 if (!isSpyActive) {
-                    // スパイ未活動時は最も近い基地局との距離を表示
                     let minBaseDist = Infinity;
                     baseStations.forEach(st => {
                         const d = map.distance([currentMyPos.lat, currentMyPos.lng], [st.lat, st.lng]);
@@ -819,7 +822,6 @@
                     sigStatusText = "RECON (偵察中)";
                     sigColorClass = "sig-green";
                 } else if (enemyMarker) {
-                    // スパイ活動開始後はスパイとの距離を計測
                     const dist = map.distance([currentMyPos.lat, currentMyPos.lng], enemyMarker.getLatLng());
                     distText = `スパイとの距離: ${Math.floor(dist)} m`;
 
