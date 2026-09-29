@@ -3,214 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>宝探しオペレーション</title>
+    <title>PROJECT: OMEGA - YOKOHAMA LEGACY</title>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: monospace; background: #000; color: #0f0; overflow: hidden; }
         
-        /* スタート画面（初期画面） */
-        #page-welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0; z-index: 9999; box-sizing: border-box; padding: 20px; text-align: center; }
-        .start-btn { background: #000; color: #0f0; border: 2px solid #0f0; padding: 15px 30px; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 5px; box-shadow: 0 0 15px rgba(0,255,0,0.4); transition: 0.2s; font-family: monospace; margin-top: 20px; }
+        /* ステップ1：オープニング動画全画面表示 */
+        #page-intro-video {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0;
+            z-index: 10000; box-sizing: border-box; padding: 10px; text-align: center;
+        }
+        .intro-video-container {
+            width: 100%; max-width: 600px; max-height: 80vh; background: #000; border: 1px solid #0f0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .intro-skip-btn {
+            background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px 20px;
+            font-size: 14px; cursor: pointer; border-radius: 4px; font-family: monospace; margin-top: 15px;
+        }
+        .intro-skip-btn:active { background: #0f0; color: #000; }
+
+        /* ステップ2：ロゴ＆注意点・作戦開始画面 */
+        #page-welcome { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0; z-index: 9999; box-sizing: border-box; padding: 20px; text-align: center; overflow-y: auto; }
+        .welcome-box { max-width: 450px; width: 100%; border: 1px solid #0f0; padding: 20px; background: #050505; box-shadow: 0 0 20px rgba(0,255,0,0.3); box-sizing: border-box; }
+        
+        /* ロゴ画像コンテナ（サイズを大きく調整） */
+        .game-logo-container { text-align: center; padding: 12px; background: #000; border: 1px solid #0f0; margin-bottom: 15px; box-shadow: 0 0 10px rgba(0,255,0,0.2); }
+        .game-logo-img { width: 100%; height: auto; max-height: 200px; object-fit: contain; display: block; margin: 0 auto; }
+        
+        .game-logo-main { margin: 0; font-family: monospace; font-size: 18px; color: #0f0; text-shadow: 0 0 8px rgba(0,255,0,0.6); letter-spacing: 2px; }
+        .game-logo-sub { font-size: 10px; color: #888; letter-spacing: 1px; margin-top: 4px; border-top: 1px dashed #030; padding-top: 4px; }
+
+        .start-btn { background: #000; color: #0f0; border: 2px solid #0f0; padding: 12px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; box-shadow: 0 0 10px rgba(0,255,0,0.4); transition: 0.2s; font-family: monospace; width: 100%; margin-top: 15px; }
         .start-btn:active { background: #0f0; color: #000; }
 
         /* ヘッダー・ハンバーガーメニュー */
         .header { height: 50px; background: #111; border-bottom: 1px solid #0f0; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; position: relative; z-index: 1001; }
         .hamburger-btn { background: none; border: none; color: #0f0; font-size: 24px; cursor: pointer; }
 
-        /* タイマーの数字幅を完全に固定し、ガタつきを防ぐ */
-        #mini-timer {
-            font-family: monospace;
-            font-variant-numeric: tabular-nums;
-            min-width: 65px;
-            text-align: right;
-            display: inline-block;
-        }
+        #mini-timer { font-family: monospace; font-variant-numeric: tabular-nums; min-width: 65px; text-align: right; display: inline-block; }
         
-        /* ナビゲーションメニュー */
         .nav-menu { position: fixed; top: 50px; left: -100%; width: 250px; height: calc(100% - 50px); background: rgba(0, 0, 0, 0.95); border-right: 1px solid #0f0; transition: 0.3s; z-index: 1000; padding: 20px; box-sizing: border-box; }
         .nav-menu.open { left: 0; }
         .nav-item { display: block; color: #0f0; text-decoration: none; padding: 12px 0; border-bottom: 1px dashed #030; font-size: 16px; cursor: pointer; }
         .nav-item:hover { background: #002200; }
 
-        /* 画面コンテナ */
         .page { display: none; height: calc(100vh - 50px); width: 100%; box-sizing: border-box; padding: 15px; overflow-y: auto; }
         .page.active { display: block; }
 
-        /* マップ関連 */
         #map-container { position: relative; height: 100%; width: 100%; }
         #map { height: 100%; width: 100%; }
         .map-control-btn { position: absolute; bottom: 20px; right: 20px; z-index: 999; background: #000; color: #0f0; border: 2px solid #0f0; padding: 10px 15px; font-weight: bold; cursor: pointer; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,255,0,0.3); }
 
         .status-card { border: 1px solid #0f0; padding: 15px; margin-bottom: 15px; background: #050505; }
         
-        /* 謎解きタブ用スタイル */
-        .puzzle-tab-btn { background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px 12px; margin-right: 5px; cursor: pointer; font-family: monospace; }
+        .puzzle-tab-btn { background: #000; color: #0f0; border: 1px solid #0f0; padding: 6px 10px; margin-right: 4px; margin-bottom: 5px; cursor: pointer; font-family: monospace; font-size: 11px; }
         .puzzle-tab-btn.active-puzzle { background: #0f0; color: #000; font-weight: bold; }
         .puzzle-content { display: none; border: 1px solid #0f0; padding: 15px; margin-top: 10px; background: #050505; }
         .puzzle-content.active-puzzle { display: block; }
 
-        /* 電波強度バロメータのスタイル */
-        .signal-container {
-            margin-top: 8px;
-            background: #000;
-            border: 1px solid #0f0;
-            padding: 8px;
-            box-sizing: border-box;
-        }
-        .signal-label {
-            font-size: 11px;
-            margin-bottom: 4px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .signal-bar-bg {
-            width: 100%;
-            height: 10px;
-            background: #111;
-            border: 1px solid #333;
-            position: relative;
-            overflow: hidden;
-        }
-        .signal-bar-fill {
-            height: 100%;
-            width: 0%;
-            transition: width 0.3s ease, background-color 0.3s ease;
-        }
+        .signal-container { margin-top: 8px; background: #000; border: 1px solid #0f0; padding: 8px; box-sizing: border-box; }
+        .signal-label { font-size: 11px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .signal-bar-bg { width: 100%; height: 10px; background: #111; border: 1px solid #333; position: relative; overflow: hidden; }
+        .signal-bar-fill { height: 100%; width: 0%; transition: width 0.3s ease, background-color 0.3s ease; }
         .sig-green { background-color: #0f0; box-shadow: 0 0 5px #0f0; }
         .sig-yellow { background-color: #ff0; box-shadow: 0 0 5px #ff0; }
         .sig-red { background-color: #f00; box-shadow: 0 0 8px #f00; animation: pulseRed 0.8s infinite alternate; }
 
-        @keyframes pulseRed {
-            0% { opacity: 0.6; }
-            100% { opacity: 1.0; }
-        }
+        @keyframes pulseRed { 0% { opacity: 0.6; } 100% { opacity: 1.0; } }
 
-        /* カスタム・アクセス拒否ダイアログ（モーダル） */
-        #custom-dialog-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.85);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-        }
-        .custom-dialog-box {
-            background: #050505;
-            border: 2px solid #f00;
-            color: #f00;
-            padding: 20px;
-            width: 80%;
-            max-width: 320px;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
-            font-family: monospace;
-            border-radius: 4px;
-        }
-        .custom-dialog-btn {
-            background: #000;
-            color: #f00;
-            border: 1px solid #f00;
-            padding: 8px 20px;
-            margin-top: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            font-family: monospace;
-        }
-        .custom-dialog-btn:hover {
-            background: #f00;
-            color: #000;
-        }
+        #custom-dialog-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); display: none; align-items: center; justify-content: center; z-index: 99999; }
+        .custom-dialog-box { background: #050505; border: 2px solid #f00; color: #f00; padding: 20px; width: 80%; max-width: 320px; text-align: center; box-shadow: 0 0 20px rgba(255, 0, 0, 0.4); font-family: monospace; border-radius: 4px; }
+        .custom-dialog-btn { background: #000; color: #f00; border: 1px solid #f00; padding: 8px 20px; margin-top: 15px; font-weight: bold; cursor: pointer; font-family: monospace; }
+        .custom-dialog-btn:hover { background: #f00; color: #000; }
 
-        /* スパイアイコンのアニメーション */
         .spy-icon { animation: breathing 2s ease-in-out infinite; transform-origin: 50% 50%; overflow: hidden; }
         @keyframes breathing { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
         .custom-spy-icon { background: transparent !important; border: none !important; display: flex !important; align-items: center; justify-content: center; }
-        
-        .spy-icon.stopped {
-            filter: grayscale(100%) brightness(50%);
-            opacity: 0.6;
-            animation: none;
-        }
+        .spy-icon.stopped { filter: grayscale(100%) brightness(50%); opacity: 0.6; animation: none; }
 
-        /* 画面警告フラッシュ用オーバーレイ */
-        #alert-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: rgba(255, 0, 0, 0);
-            pointer-events: none;
-            z-index: 99999;
-            transition: background-color 0.2s ease;
-        }
-        @keyframes flashRed {
-            0% { background-color: rgba(255, 0, 0, 0); }
-            50% { background-color: rgba(255, 0, 0, 0.6); }
-            100% { background-color: rgba(255, 0, 0, 0); }
-        }
-        .flashing {
-            animation: flashRed 1.0s ease-in-out 3;
-        }
+        #alert-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(255, 0, 0, 0); pointer-events: none; z-index: 99999; transition: background-color 0.2s ease; }
+        @keyframes flashRed { 0% { background-color: rgba(255, 0, 0, 0); } 50% { background-color: rgba(255, 0, 0, 0.6); } 100% { background-color: rgba(255, 0, 0, 0); } }
+        .flashing { animation: flashRed 1.0s ease-in-out 3; }
 
-        /* システム復旧・奇襲警告メッセージバッジ */
-        #recovery-warning-banner {
-            position: fixed;
-            top: 30%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.95);
-            border: 2px solid #f00;
-            color: #f00;
-            padding: 20px;
-            text-align: center;
-            z-index: 100000;
-            display: none;
-            border-radius: 8px;
-            box-shadow: 0 0 25px rgba(255,0,0,0.7);
-            font-family: monospace;    
-        }
+        #recovery-warning-banner { position: fixed; top: 30%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.95); border: 2px solid #f00; color: #f00; padding: 20px; text-align: center; z-index: 100000; display: none; border-radius: 8px; box-shadow: 0 0 25px rgba(255,0,0,0.7); font-family: monospace; }
 
-        /* ターミナル風の文字ストリーム表示エリア */
-        .terminal-stream-box {
-            background: #000;
-            border: 1px solid #0f0;
-            color: #0f0;
-            font-family: monospace;
-            font-size: 11px;
-            padding: 10px;
-            height: 120px;
-            overflow-y: hidden;
-            text-align: left;
-            box-sizing: border-box;
-            margin-top: 10px;
-            position: relative;
-        }
-        .terminal-stream-box::after {
-            content: "";
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 30px;
-            background: linear-gradient(transparent, #000);
-            pointer-events: none;
-        }
-        .stream-line {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            line-height: 1.4;
-        }
+        .terminal-stream-box { background: #000; border: 1px solid #0f0; color: #0f0; font-family: monospace; font-size: 11px; padding: 10px; height: 120px; overflow-y: hidden; text-align: left; box-sizing: border-box; margin-top: 10px; position: relative; }
+        .terminal-stream-box::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; background: linear-gradient(transparent, #000); pointer-events: none; }
+        .stream-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
     </style>
 </head>
 <body>
-    <!-- カスタム・アクセス拒否ダイアログ用オーバーレイ -->
     <div id="custom-dialog-overlay">
         <div class="custom-dialog-box">
             <h3 style="margin-top: 0; font-size: 16px;">⚠️ ACCESS DENIED</h3>
@@ -219,24 +104,45 @@
         </div>
     </div>
 
-    <!-- 画面警告フラッシュ用オーバーレイ -->
     <div id="alert-overlay"></div>
 
-    <!-- システム復旧・奇襲警告バッジ -->
     <div id="recovery-warning-banner">
         <h2 id="banner-title" style="margin: 0 0 10px 0; font-size: 18px;">⚠️ EMERGENCY ALERT ⚠️</h2>
         <p id="banner-text" style="margin: 0; font-size: 13px; color: #ff0; line-height: 1.5;">
-            敵の活動が検知されました！<br>スパイが逃走を開始しました！
+            あの国の活動が検知されました！<br>スパイが活動を開始しました！
         </p>
     </div>
 
-    <!-- 初期ウェルカム画面（ゲーム開始ボタン） -->
+    <!-- ステップ1：オープニング動画全画面表示画面 -->
+    <div id="page-intro-video">
+        <div class="intro-video-container">
+            <video id="intro-vid" src="./opening.mp4" controls playsinline autoplay style="width: 100%; max-height: 65vh; object-fit: contain; background: #000;"></video>
+            <button class="intro-skip-btn" onclick="finishIntroVideo()">動画をスキップ</button>
+        </div>
+    </div>
+
+    <!-- ステップ2：ロゴ＆安全注意喚起 ＆ 作戦開始画面 -->
     <div id="page-welcome">
-        <h2 style="color: #0f0; margin-bottom: 10px;">■ 秘匿作戦システム</h2>
-        <p style="color: #888; font-size: 13px; max-width: 300px; line-height: 1.6;">
-            本作戦を遂行するため、位置情報（GPS）のアクセス許可が必要です。
-        </p>
-        <button class="start-btn" onclick="requestPermissionsAndStart()">ゲームを始める</button>
+        <div class="welcome-box">
+            <!-- ロゴ画像表示エリア（サイズ拡大） -->
+            <div class="game-logo-container">
+                <img src="./img/logo.jpeg" alt="PROJECT: OMEGA - YOKOHAMA LEGACY" class="game-logo-img" onerror="this.style.display='none'; document.getElementById('fallback-logo').style.display='block';">
+                <div id="fallback-logo" style="display:none;">
+                    <div style="font-size: 9px; color: #ff5500; letter-spacing: 2px; margin-bottom: 2px;">[CLASSIFIED OPERATION]</div>
+                    <h1 class="game-logo-main">PROJECT: OMEGA</h1>
+                    <div class="game-logo-sub">YOKOHAMA LEGACY</div>
+                </div>
+            </div>
+
+            <p style="color: #ccc; font-size: 15px; line-height: 1.5; margin-bottom: 15px; text-align: left;">
+                【エージェントへの指令とお願い】<br>
+                ・制限時間：2時間<br>
+                ・周囲の安全に注意し、歩きスマホは絶対におやめください。<br>
+                ・歩道や公共のルールを厳守し、絶対に走らないこと。
+            </p>
+
+            <button class="start-btn" onclick="requestPermissionsAndStart()">作戦開始（GPS許可）</button>
+        </div>
     </div>
 
     <div class="header">
@@ -245,13 +151,12 @@
         <div id="mini-timer" style="font-size: 12px; font-variant-numeric: tabular-nums; min-width: 60px; text-align: right;">--分--秒</div>
     </div>
 
-    <!-- ハンバーガーメニュー -->
     <div id="nav-menu" class="nav-menu">
         <div style="margin-bottom: 20px; font-weight: bold; border-bottom: 1px solid #0f0; padding-bottom: 5px;">■ MENU</div>
         <a class="nav-item" onclick="switchPage('page-home')">01. トップ画面（司令室）</a>
         <a class="nav-item" onclick="switchPage('page-map')">02. マップ（追跡モニター）</a>
         <a class="nav-item" onclick="switchPage('page-hack')">03. ハッキング</a>
-        <a class="nav-item" onclick="switchPage('page-puzzle')">04. ミッション・問題一覧</a>
+        <a class="nav-item" onclick="switchPage('page-puzzle')">04. ミッションファイル</a>
     </div>
 
     <!-- 01. トップ画面 -->
@@ -260,7 +165,6 @@
             <h3>【作戦ステータス】</h3>
             <p id="my-pos-text">現在地: 取得中...</p>
             <p id="home-dist">ターゲットとの距離: 待機中...</p>
-            <!-- 電波強度バロメータ -->
             <div class="signal-container">
                 <div class="signal-label">
                     <span>信号強度 (SIGNAL)</span>
@@ -284,7 +188,6 @@
     <div id="page-map" class="page" style="padding: 0;">
         <div id="map-container">
             <div id="map"></div>
-            <!-- 左上に配置する距離バッジ ＆ ゲージ -->
             <div id="map-dist-badge" style="position: absolute; top: 15px; left: 15px; z-index: 999; background: rgba(0,0,0,0.85); border: 1px solid #0f0; padding: 10px; font-size: 12px; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,255,0,0.3); min-width: 170px; box-sizing: border-box;">
                 <div id="map-dist-text" style="margin-bottom: 6px; color: #0f0;">ターゲット距離: 待機中</div>
                 <div style="width: 100%; height: 6px; background: #111; border: 1px solid #333; overflow: hidden; border-radius: 2px;">
@@ -299,18 +202,15 @@
     <div id="page-hack" class="page">
         <h3>💻 敵システム・侵入ツール</h3>
         
-        <!-- ステップ1: 傍受ボタン -->
         <div id="hack-step1">
             <p>📡 敵の無線通信を傍受・解析せよ。</p>
             <button id="intercept-btn" onclick="startIntercept()" style="background:#000; color:#0f0; border:1px solid #0f0; padding:10px 20px;">傍受を開始</button>
             
-            <!-- 文字が流れるターミナル風コンテナ ＆ 連動プログレスバー -->
             <div id="intercept-progress-container" style="display:none; margin:15px 0;">
                 <div style="font-size:10px; margin-bottom:5px; display:flex; justify-content:space-between;">
                     <span>[SYSTEM] パケット解析中...</span>
                     <span id="intercept-percent-text">0%</span>
                 </div>
-                <!-- ログ連動プログレスバー -->
                 <div style="width:100%; height:8px; border:1px solid #0f0; margin-bottom:8px; background:#111;">
                     <div id="intercept-log-bar" style="width:0%; height:100%; background:#0f0; transition:width 0.2s ease;"></div>
                 </div>
@@ -318,14 +218,12 @@
             </div>
         </div>
 
-        <!-- ステップ2: 謎解き -->
         <div id="hack-step2" style="display:none; margin-top:20px;">
             <p id="intercepted-message" style="color:#ff0; border:1px dashed #ff0; padding:10px;"></p>
             <input type="text" id="code-input" placeholder="解読キーを入力 (例: YOKOHAMA)" style="background:#000; color:#0f0; border:1px solid #0f0; padding:8px; width:70%;">
             <button onclick="startHack()" style="background:#0f0; border:none; padding:9px; font-weight:bold;">侵入実行</button>
         </div>
 
-        <!-- ステップ3: 実行中プログレス -->
         <div id="hack-step3" style="display:none; margin-top:20px;">
             <div style="font-size:10px; margin-bottom:5px;">[SYSTEM] エクスプロイト展開中...</div>
             <div style="width:100%; height:20px; border:1px solid #0f0;"><div id="hack-bar" style="width:0%; height:100%; background:#f00;"></div></div>
@@ -333,20 +231,21 @@
         </div>
     </div>
 
-    <!-- 04. 謎解き画面 -->
+    <!-- 04. ミッションファイル（山下公園 ➔ 氷川丸 ➔ くじらの背中 ➔ 赤レンガ ➔ 日本丸） -->
     <div id="page-puzzle" class="page">
         <h3>🧩 ミッションファイル</h3>
-        <p style="font-size: 12px; color: #888;">各ステージの暗号を解き、次の目的地を割り出せ。</p>
+        <p style="font-size: 12px; color: #888;">横浜の海沿いを巡り、岡本正造の遺した暗号を解き明かせ。</p>
         
         <div style="margin-bottom: 15px; overflow-x: auto; white-space: nowrap;">
             <button class="puzzle-tab-btn active-puzzle" onclick="switchPuzzle('p1', this)">Stage 1</button>
             <button class="puzzle-tab-btn" onclick="switchPuzzle('p2', this)">Stage 2</button>
             <button class="puzzle-tab-btn" onclick="switchPuzzle('p3', this)">Stage 3</button>
-            <button class="puzzle-tab-btn" onclick="switchPuzzle('p4', this)">Final Stage</button>
+            <button class="puzzle-tab-btn" onclick="switchPuzzle('p4', this)">Stage 4</button>
+            <button class="puzzle-tab-btn" onclick="switchPuzzle('p5', this)">Final</button>
         </div>
 
         <div id="p1" class="puzzle-content active-puzzle">
-            <h4>■ ステージ1：始まりの地点</h4>
+            <h4>■ ステージ1：始まりの地点（山下公園）</h4>
             <p><strong>【問題】</strong><br>港町を見下ろす赤い靴の少女像、その近くに眠る最初のキーワードを見つけ出せ。</p>
             <div style="margin-top: 10px;">
                 <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
@@ -356,7 +255,7 @@
         </div>
 
         <div id="p2" class="puzzle-content">
-            <h4>■ ステージ2：鋼鉄の巨人</h4>
+            <h4>■ ステージ2：鋼鉄の巨人（氷川丸）</h4>
             <p><strong>【問題】</strong><br>海に浮かぶ巨大な歴史的船舶。そのスクリュー付近に隠された数字の合計は？</p>
             <div style="margin-top: 10px;">
                 <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
@@ -366,23 +265,33 @@
         </div>
 
         <div id="p3" class="puzzle-content">
-            <h4>■ ステージ3：赤レンガの迷宮</h4>
+            <h4>■ ステージ3：洋上の見張り台（くじらの背中）</h4>
+            <p><strong>【問題】</strong><br>波間に浮かぶ巨大なクジラの背中。そのウッドデッキの先端に刻まれた、座標を示す数字を暴け。</p>
+            <div style="margin-top: 10px;">
+                <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
+                <button style="background:#0f0; border:none; padding:6px; font-weight:bold;">認証</button>
+            </div>
+            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 大さん橋の屋上（くじらの背中）の先端を確認せよ。</p>
+        </div>
+
+        <div id="p4" class="puzzle-content">
+            <h4>■ ステージ4：赤レンガの迷宮（赤レンガ倉庫）</h4>
             <p><strong>【問題】</strong><br>歴史ある倉庫群のなかに刻まれた、かつてのレンガ職人のイニシャルを繋げ。</p>
             <div style="margin-top: 10px;">
                 <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
                 <button style="background:#0f0; border:none; padding:6px; font-weight:bold;">認証</button>
             </div>
-            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 敷地内のモニュメントの足元に注目。</p>
+            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 赤レンガ倉庫の壁面やモニュメントに注目せよ。</p>
         </div>
 
-        <div id="p4" class="puzzle-content">
-            <h4>■ ファイナルステージ：最終暗号</h4>
-            <p><strong>【問題】</strong><br>すべての情報を統合せよ。スパイが最後に潜伏するロッカーの暗証番号は？</p>
+        <div id="p5" class="puzzle-content">
+            <h4>■ ファイナルステージ：造船の記憶（日本丸周辺）</h4>
+            <p><strong>【問題】</strong><br>すべての情報を統合せよ。かつての巨大ドックが眠るこの地で、スパイが狙う中枢データの解読キーは？</p>
             <div style="margin-top: 10px;">
                 <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
                 <button style="background:#0f0; border:none; padding:6px; font-weight:bold;">認証</button>
             </div>
-            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: これまで集めたピースを組み合わせろ。</p>
+            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: これまで集めたすべてのピースを組み合わせろ。</p>
         </div>
     </div>
 
@@ -390,7 +299,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotate-map@0.3.1/dist/leaflet-rotate-map.js"></script>
     <script>
-        // --- 変数定義 ---
         let map, myMarker, enemyMarker;
         let baseStationMarkers = [];
         let currentMyPos = { lat: 0, lng: 0 };
@@ -400,17 +308,16 @@
         
         let isSpyActive = false;
         let startTime = 0; 
-        const totalDurationMs = 120 * 60 * 1000; // 120分
-        const spyActivationDelayMs = 0 * 60 * 1000; // 5分後にスパイ起動
-        
+        const totalDurationMs = 120 * 60 * 1000; // 制限時間：120分（2時間）
+        const spyActivationDelayMs = 0.2 * 60 * 1000; // 5分後にスパイ活動開始
 
         const spyRoute = [
             [35.4500, 139.6500], [35.4480, 139.6480], [35.4460, 139.6450], [35.4450, 139.6400]
         ];
 
         const baseStations = [
-            { lat: 35.4520, lng: 139.6520, name: "敵通信基地局 01 (北区)" },
-            { lat: 35.4440, lng: 139.6380, name: "敵通信基地局 02 (湾岸区)" }
+            { lat: 35.4520, lng: 139.6520, name: "敵通信基地局 01 (山下公園エリア)" },
+            { lat: 35.4440, lng: 139.6380, name: "敵通信基地局 02 (赤レンガエリア)" }
         ];
 
         let spyIconNormal, spyIconStopped;
@@ -421,7 +328,7 @@
                 touchRotate: true,
                 rotateControl: true,
                 zoomControl: false
-            }).setView([35.4475, 139.6465], 16);
+            }).setView([35.4475, 139.6465], 15);
 
             L.control.zoom({ position: 'topright' }).addTo(map);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -459,7 +366,22 @@
             });
 
             enemyMarker = L.marker(spyRoute[0], { icon: spyIconNormal });
+
+            const introVid = document.getElementById('intro-vid');
+            if (introVid) {
+                introVid.addEventListener('ended', () => {
+                    finishIntroVideo();
+                });
+            }
         });
+
+        function finishIntroVideo() {
+            const introElem = document.getElementById('page-intro-video');
+            const welcomeElem = document.getElementById('page-welcome');
+            
+            if (introElem) introElem.style.display = 'none';
+            if (welcomeElem) welcomeElem.style.display = 'flex';
+        }
 
         function requestPermissionsAndStart() {
             startTime = Date.now();
@@ -566,12 +488,11 @@
             "SYNCING_THREAD_POOLS: 8 workers active",
             "EVALUATING_HEURISTIC_THREAT_LEVEL: LOW",
             "DISABLING_KERNEL_DEBUG_FLAGS... [OK]",
-            "INJECTING_VIRTUAL_DELAY: 30-second stopper armed...",
+            "INJECTING_VIRTUAL_DELAY: 30-second stopper armed.",
             "BYPASS_VECTOR_LOCKED: Ready for authorization code.",
             "ACCESS_VECTOR_FOUND: Ready for input."
         ];
 
-        // --- ログ連動プログレスバー付きストリーム演出 ---
         function startIntercept() {
             document.getElementById('intercept-btn').style.display = 'none';
             document.getElementById('intercept-progress-container').style.display = 'block';
@@ -592,12 +513,11 @@
                     terminal.scrollTop = terminal.scrollHeight;
                     logIndex++;
 
-                    // 進捗率（％）を計算してプログレスバーとテキストを更新
                     const percent = Math.floor((logIndex / totalLogs) * 100);
                     document.getElementById('intercept-log-bar').style.width = percent + "%";
                     document.getElementById('intercept-percent-text').innerText = percent + "%";
 
-                    const randomDelay = Math.floor(Math.random() * 400) + 50; 
+                    const randomDelay = Math.floor(Math.random() * 400) + 100; 
                     setTimeout(appendNextLog, randomDelay);
                 } else {
                     setTimeout(() => {
@@ -626,6 +546,69 @@
             if (overlay) {
                 overlay.style.display = 'none';
             }
+        }
+
+        function startHack() {
+            if (!isSpyActive) {
+                showCustomDialog("ACCESS ERROR: ターゲット（スパイ）がまだ活動を開始していません。まずは基地局を調査し、スパイの出足を待て。");
+                return;
+            }
+
+            if (hasHackedOnce) {
+                showCustomDialog("ACCESS DENIED: ファイアウォールが強化され、再度の侵入は不可能です。");
+                return;
+            }
+
+            const inputVal = document.getElementById('code-input').value;
+            if (inputVal !== "YOKOHAMA") {
+                showCustomDialog("ACCESS拒否：不正なキーです。正しい解読キーを入力してください。");
+                return;
+            }
+
+            hasHackedOnce = true;
+            document.getElementById('hack-step2').style.display = 'none';
+            document.getElementById('hack-step3').style.display = 'block';
+            
+            let bar = document.getElementById('hack-bar');
+            let width = 0;
+            let interval = setInterval(() => {
+                width += 1;
+                bar.style.width = width + "%";
+                if (width >= 100) {
+                    clearInterval(interval);
+                    isHacked = true;
+
+                    if (enemyMarker && spyIconStopped) {
+                        enemyMarker.setIcon(spyIconStopped);
+                        enemyMarker.bindPopup("【システム停止】スパイ足止め中").openPopup();
+                    }
+
+                    document.getElementById('hack-result').innerHTML = 
+                        "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。</span>";
+
+                    setTimeout(() => {
+                        isHacked = false;
+
+                        if (enemyMarker && spyIconNormal) {
+                            enemyMarker.setIcon(spyIconNormal);
+                            enemyMarker.bindPopup("【警告】敵のシステムが復旧！").openPopup();
+                        }
+
+                        const banner = document.getElementById('recovery-warning-banner');
+                        document.getElementById('banner-title').innerText = "⚠️ SYSTEM RESTORED ⚠️";
+                        document.getElementById('banner-text').innerHTML = "敵のバックアップ回路が起動！<br>スパイが活動を再開しました！";
+                        if (banner) {
+                            banner.style.display = 'block';
+                            setTimeout(() => {
+                                banner.style.display = 'none';
+                            }, 11000);
+                        }
+
+                        triggerAlertEffects();
+
+                    }, 30000);
+                }
+            }, 30);
         }
 
         function triggerAlertEffects() {
@@ -689,70 +672,6 @@
             }
         }
 
-        function startHack() {
-            if (!isSpyActive) {
-                showCustomDialog("ACCESS ERROR: ターゲット（スパイ）がまだ活動を開始していません。まずは基地局を調査し、スパイの出足を待て。");
-                return;
-            }
-
-            if (hasHackedOnce) {
-                showCustomDialog("ACCESS DENIED: ファイアウォールが強化され、再度の侵入は不可能です。");
-                return;
-            }
-
-            const inputVal = document.getElementById('code-input').value;
-            if (inputVal !== "YOKOHAMA") {
-                showCustomDialog("ACCESS拒否：不正なキーです。正しい解読キーを入力してください。");
-                return;
-            }
-
-            hasHackedOnce = true;
-            document.getElementById('hack-step2').style.display = 'none';
-            document.getElementById('hack-step3').style.display = 'block';
-            
-            let bar = document.getElementById('hack-bar');
-            let width = 0;
-            let interval = setInterval(() => {
-                width += 1;
-                bar.style.width = width + "%";
-                if (width >= 100) {
-                    clearInterval(interval);
-                    isHacked = true;
-
-                    if (enemyMarker && spyIconStopped) {
-                        enemyMarker.setIcon(spyIconStopped);
-                        enemyMarker.bindPopup("【システム停止】スパイ足止め中").openPopup();
-                    }
-
-                    document.getElementById('hack-result').innerHTML = 
-                        "<span style='color:#f00; text-size:25px;'>ACCESS GRANTED: 敵システム停止完了。</span>";
-
-                    setTimeout(() => {
-                        isHacked = false;
-
-                        if (enemyMarker && spyIconNormal) {
-                            enemyMarker.setIcon(spyIconNormal);
-                            enemyMarker.bindPopup("【警告】スパイのシステムが復旧！逃走中！").openPopup();
-                        }
-
-                        const banner = document.getElementById('recovery-warning-banner');
-                        document.getElementById('banner-title').innerText = "⚠️ SYSTEM RESTORED ⚠️";
-                        document.getElementById('banner-text').innerHTML = "敵のバックアップ回路が起動！<br>スパイが逃走を再開しました！";
-                        if (banner) {
-                            banner.style.display = 'block';
-                            setTimeout(() => {
-                                banner.style.display = 'none';
-                            }, 11000);
-                        }
-
-                        triggerAlertEffects();
-
-                    }, 30000);
-                }
-            }, 30);
-        }
-
-
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition((pos) => {
                 currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -796,7 +715,7 @@
 
                 const banner = document.getElementById('recovery-warning-banner');
                 document.getElementById('banner-title').innerText = "敵スパイ活動開始";
-                document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが活動を開始しました！追跡せよ！";
+                document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが移動を開始しました！";
                 if (banner) {
                     banner.style.display = 'block';
                     setTimeout(() => {

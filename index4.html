@@ -9,15 +9,30 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: monospace; background: #000; color: #0f0; overflow: hidden; }
         
-        /* スタート画面（初期画面・画像ロゴ＆動画ブリーフィング付き） */
-        #page-welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0; z-index: 9999; box-sizing: border-box; padding: 20px; text-align: center; overflow-y: auto; }
+        /* ステップ1：オープニング動画全画面表示 */
+        #page-intro-video {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0;
+            z-index: 10000; box-sizing: border-box; padding: 10px; text-align: center;
+        }
+        .intro-video-container {
+            width: 100%; max-width: 600px; max-height: 80vh; background: #000; border: 1px solid #0f0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .intro-skip-btn {
+            background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px 20px;
+            font-size: 14px; cursor: pointer; border-radius: 4px; font-family: monospace; margin-top: 15px;
+        }
+        .intro-skip-btn:active { background: #0f0; color: #000; }
+
+        /* ステップ2：ロゴ＆注意点・作戦開始画面 */
+        #page-welcome { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0; z-index: 9999; box-sizing: border-box; padding: 20px; text-align: center; overflow-y: auto; }
         .welcome-box { max-width: 450px; width: 100%; border: 1px solid #0f0; padding: 20px; background: #050505; box-shadow: 0 0 20px rgba(0,255,0,0.3); box-sizing: border-box; }
         
-        /* ロゴ画像コンテナ */
-        .game-logo-container { text-align: center; padding: 10px; background: #000; border: 1px solid #0f0; margin-bottom: 15px; box-shadow: 0 0 10px rgba(0,255,0,0.2); }
-        .game-logo-img { width: 100%; height: auto; max-height: 120px; object-fit: contain; display: block; margin: 0 auto; }
+        /* ロゴ画像コンテナ（サイズを大きく調整） */
+        .game-logo-container { text-align: center; padding: 12px; background: #000; border: 1px solid #0f0; margin-bottom: 15px; box-shadow: 0 0 10px rgba(0,255,0,0.2); }
+        .game-logo-img { width: 100%; height: auto; max-height: 200px; object-fit: contain; display: block; margin: 0 auto; }
         
-        /* フォールバック用テキストロゴ（画像がない場合の保険） */
         .game-logo-main { margin: 0; font-family: monospace; font-size: 18px; color: #0f0; text-shadow: 0 0 8px rgba(0,255,0,0.6); letter-spacing: 2px; }
         .game-logo-sub { font-size: 10px; color: #888; letter-spacing: 1px; margin-top: 4px; border-top: 1px dashed #030; padding-top: 4px; }
 
@@ -94,17 +109,24 @@
     <div id="recovery-warning-banner">
         <h2 id="banner-title" style="margin: 0 0 10px 0; font-size: 18px;">⚠️ EMERGENCY ALERT ⚠️</h2>
         <p id="banner-text" style="margin: 0; font-size: 13px; color: #ff0; line-height: 1.5;">
-            敵の活動が検知されました！<br>スパイが逃走を開始しました！
+            あの国の活動が検知されました！<br>スパイが活動を開始しました！
         </p>
     </div>
 
-    <!-- 初期ウェルカム画面（ロゴ画像＆動画ブリーフィング＆安全注意喚起） -->
+    <!-- ステップ1：オープニング動画全画面表示画面 -->
+    <div id="page-intro-video">
+        <div class="intro-video-container">
+            <video id="intro-vid" src="./opening.mp4" controls playsinline autoplay style="width: 100%; max-height: 65vh; object-fit: contain; background: #000;"></video>
+            <button class="intro-skip-btn" onclick="finishIntroVideo()">動画をスキップ</button>
+        </div>
+    </div>
+
+    <!-- ステップ2：ロゴ＆安全注意喚起 ＆ 作戦開始画面 -->
     <div id="page-welcome">
         <div class="welcome-box">
-            <!-- ロゴ画像表示エリア -->
+            <!-- ロゴ画像表示エリア（サイズ拡大） -->
             <div class="game-logo-container">
                 <img src="./img/logo.jpeg" alt="PROJECT: OMEGA - YOKOHAMA LEGACY" class="game-logo-img" onerror="this.style.display='none'; document.getElementById('fallback-logo').style.display='block';">
-                <!-- 画像が読み込めない場合のフォールバックテキストロゴ -->
                 <div id="fallback-logo" style="display:none;">
                     <div style="font-size: 9px; color: #ff5500; letter-spacing: 2px; margin-bottom: 2px;">[CLASSIFIED OPERATION]</div>
                     <h1 class="game-logo-main">PROJECT: OMEGA</h1>
@@ -112,16 +134,11 @@
                 </div>
             </div>
 
-            <!-- 紹介動画埋め込みエリア -->
-            <div style="width: 100%; margin-bottom: 15px; background: #111; border: 1px solid #0f0; padding: 5px; box-sizing: border-box;">
-                <video src="./opening.mp4" controls playsinline style="width: 100%; height: auto; display: block; background: #000;"></video>
-            </div>
-
-            <p style="color: #ccc; font-size: 12px; line-height: 1.5; margin-bottom: 15px; text-align: left;">
+            <p style="color: #ccc; font-size: 15px; line-height: 1.5; margin-bottom: 15px; text-align: left;">
                 【エージェントへの指令とお願い】<br>
-                ・制限時間：**2時間**[cite: 1]<br>
-                ・周囲の安全に注意し、**歩きスマホは絶対におやめください**[cite: 1]。<br>
-                ・歩道や公共のルールを厳守し、絶対に走らないこと[cite: 1]。
+                ・制限時間：2時間<br>
+                ・周囲の安全に注意し、歩きスマホは絶対におやめください。<br>
+                ・歩道や公共のルールを厳守し、絶対に走らないこと。
             </p>
 
             <button class="start-btn" onclick="requestPermissionsAndStart()">作戦開始（GPS許可）</button>
@@ -291,8 +308,8 @@
         
         let isSpyActive = false;
         let startTime = 0; 
-        const totalDurationMs = 120 * 60 * 1000; // 制限時間：120分（2時間）[cite: 1]
-        const spyActivationDelayMs = 5 * 60 * 1000; // 5分後にスパイ活動開始
+        const totalDurationMs = 120 * 60 * 1000; // 制限時間：120分（2時間）
+        const spyActivationDelayMs = 0.2 * 60 * 1000; // 5分後にスパイ活動開始
 
         const spyRoute = [
             [35.4500, 139.6500], [35.4480, 139.6480], [35.4460, 139.6450], [35.4450, 139.6400]
@@ -349,7 +366,22 @@
             });
 
             enemyMarker = L.marker(spyRoute[0], { icon: spyIconNormal });
+
+            const introVid = document.getElementById('intro-vid');
+            if (introVid) {
+                introVid.addEventListener('ended', () => {
+                    finishIntroVideo();
+                });
+            }
         });
+
+        function finishIntroVideo() {
+            const introElem = document.getElementById('page-intro-video');
+            const welcomeElem = document.getElementById('page-welcome');
+            
+            if (introElem) introElem.style.display = 'none';
+            if (welcomeElem) welcomeElem.style.display = 'flex';
+        }
 
         function requestPermissionsAndStart() {
             startTime = Date.now();
@@ -552,19 +584,19 @@
                     }
 
                     document.getElementById('hack-result').innerHTML = 
-                        "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。ただし、バックアップ回路により再起動が予測されます。</span>";
+                        "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。</span>";
 
                     setTimeout(() => {
                         isHacked = false;
 
                         if (enemyMarker && spyIconNormal) {
                             enemyMarker.setIcon(spyIconNormal);
-                            enemyMarker.bindPopup("【警告】スパイのシステムが復旧！逃走中！").openPopup();
+                            enemyMarker.bindPopup("【警告】敵のシステムが復旧！").openPopup();
                         }
 
                         const banner = document.getElementById('recovery-warning-banner');
                         document.getElementById('banner-title').innerText = "⚠️ SYSTEM RESTORED ⚠️";
-                        document.getElementById('banner-text').innerHTML = "敵のバックアップ回路が起動！<br>スパイが逃走を再開しました！";
+                        document.getElementById('banner-text').innerHTML = "敵のバックアップ回路が起動！<br>スパイが活動を再開しました！";
                         if (banner) {
                             banner.style.display = 'block';
                             setTimeout(() => {
@@ -665,8 +697,8 @@
                 }
 
                 const banner = document.getElementById('recovery-warning-banner');
-                document.getElementById('banner-title').innerText = "🚨 敵スパイ活動開始 🚨";
-                document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが移動を開始しました！追跡せよ！";
+                document.getElementById('banner-title').innerText = "敵スパイ活動開始";
+                document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが移動を開始しました！";
                 if (banner) {
                     banner.style.display = 'block';
                     setTimeout(() => {
