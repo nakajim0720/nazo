@@ -167,7 +167,7 @@
                 ・歩道や公共のルールを厳守し、絶対に走らないこと。
             </p>
 
-            <button class="start-btn" onclick="requestPermissionsAndStart()">作戦開始（位置情報取得完了）</button>
+            <button class="start-btn" onclick="requestPermissionsAndStart()">作戦開始（GPS許可）</button>
         </div>
     </div>
 
@@ -367,7 +367,7 @@
         let spyIconNormal, spyIconStopped;
 
         /* ==========================================
-           7. アプリ初期化・マップ構築 ＆ 即時位置情報取得
+           7. アプリ初期化・マップ構築
            ========================================== */
         window.addEventListener('DOMContentLoaded', () => {
             // Leafletマップの初期化
@@ -426,30 +426,6 @@
                     finishIntroVideo();
                 });
             }
-
-            // 💡 【修正点】アプリを開いた直後（ロード時）に即座に位置情報の取得と常時監視を開始する
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(
-                    (pos) => {
-                        currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                        if (myMarker) {
-                            myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
-                        }
-                        if (isFirstLocationFix && map) {
-                            map.setView([currentMyPos.lat, currentMyPos.lng], 16);
-                            isFirstLocationFix = false;
-                        }
-                        const myPosElem = document.getElementById('my-pos-text');
-                        if (myPosElem) {
-                            myPosElem.innerText = `現在地: 緯度 ${currentMyPos.lat.toFixed(4)}, 経度 ${currentMyPos.lng.toFixed(4)}`;
-                        }
-                    },
-                    (err) => {
-                        console.warn("位置情報の取得に失敗または拒否されました:", err.message);
-                    },
-                    { enableHighAccuracy: true }
-                );
-            }
         });
 
         /* ==========================================
@@ -464,11 +440,36 @@
             if (welcomeElem) welcomeElem.style.display = 'flex';
         }
 
-        // 作戦開始ボタン押下時（タイマーをスタートし司令室へ遷移）
+        // 💡 【修正点】「作戦開始」ボタン押下時に位置情報の許可を取得し、成功してからタイマー開始と画面遷移を行う
         function requestPermissionsAndStart() {
-            startTime = Date.now();
-            document.getElementById('page-welcome').style.display = 'none';
-            switchPage('page-home');
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        // 位置情報の取得成功
+                        currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        if (myMarker) {
+                            myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
+                        }
+                        if (map) {
+                            map.setView([currentMyPos.lat, currentMyPos.lng], 16);
+                        }
+                        isFirstLocationFix = false;
+
+                        // タイマーをスタートし、司令室画面へ遷移
+                        startTime = Date.now();
+                        document.getElementById('page-welcome').style.display = 'none';
+                        switchPage('page-home');
+                    },
+                    (err) => {
+                        // 取得失敗・拒否された場合
+                        console.warn("位置情報の取得に失敗しました:", err.message);
+                        showCustomDialog("位置情報の取得が許可されなかったため、作戦を開始できません。ブラウザの設定を確認してください。");
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                showCustomDialog("お使いのブラウザは位置情報サービスに対応していません。");
+            }
         }
 
         // ハンバーガーメニューの開閉切り替え
