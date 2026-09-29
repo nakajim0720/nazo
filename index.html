@@ -365,7 +365,7 @@
         ];
 
         let spyIconNormal, spyIconStopped;
-        let globalAudioCtx = null; // 💡 音声コンテキスト保持用
+        let globalAudioCtx = null; // 音声コンテキスト保持用
 
         /* ==========================================
            7. アプリ初期化・マップ構築
@@ -441,9 +441,9 @@
             if (welcomeElem) welcomeElem.style.display = 'flex';
         }
 
-        // 💡 【修正点】「作戦開始」ボタン押下時に位置情報を取得しつつ、Web Audio APIの再生許可（アンロック）を同時に行う
+        // 「作戦開始」ボタン押下時：位置情報の常時監視を開始し、現在地が取れ次第ゲームへ移行
         function requestPermissionsAndStart() {
-            // ユーザーのタップ操作に紐づけてAudioContextを生成・即座に再生許可を通す
+            // 音声コンテキストのアンロック（スマホでの再生制限解除）
             try {
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 if (AudioCtx) {
@@ -451,7 +451,6 @@
                     if (globalAudioCtx.state === 'suspended') {
                         globalAudioCtx.resume();
                     }
-                    // 無音の短い音を鳴らしてオーディオのブロックを強制解除
                     let dummyOsc = globalAudioCtx.createOscillator();
                     let dummyGain = globalAudioCtx.createGain();
                     dummyGain.gain.setValueAtTime(0.001, globalAudioCtx.currentTime);
@@ -464,35 +463,40 @@
                 console.warn("Audio Context initialization failed:", e);
             }
 
+            // 💡 修正：ボタン押下時に watchPosition を開始し、画面上の「現在地: 取得中...」をリアルタイム更新する
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
+                navigator.geolocation.watchPosition(
                     (pos) => {
                         currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        
+                        // マップ上の自社アイコンを更新
                         if (myMarker) {
                             myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
                         }
-                        if (map) {
+                        // 初回取得時のみマップの中心を現在地へ移動
+                        if (isFirstLocationFix && map) {
                             map.setView([currentMyPos.lat, currentMyPos.lng], 16);
+                            isFirstLocationFix = false;
                         }
-                        isFirstLocationFix = false;
 
-                        startTime = Date.now();
-                        document.getElementById('page-welcome').style.display = 'none';
-                        switchPage('page-home');
+                        // ステータス画面のテキスト座標を確実に更新
+                        const myPosElem = document.getElementById('my-pos-text');
+                        if (myPosElem) {
+                            myPosElem.innerText = `現在地: 緯度 ${currentMyPos.lat.toFixed(4)}, 経度 ${currentMyPos.lng.toFixed(4)}`;
+                        }
                     },
                     (err) => {
-                        console.warn("位置情報の取得に失敗しました:", err.message);
-                        // 万が一位置情報が拒否された場合でもゲームを進められるようフォールバック処理を噛ませてスタートする
-                        startTime = Date.now();
-                        document.getElementById('page-welcome').style.display = 'none';
-                        switchPage('page-home');
+                        console.warn("位置情報の取得・監視に失敗しました:", err.message);
                     },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
                 );
-            } else {
+
+                // 作戦開始処理（タイマー開始 ＆ 司令室画面へ遷移）
                 startTime = Date.now();
                 document.getElementById('page-welcome').style.display = 'none';
                 switchPage('page-home');
+            } else {
+                showCustomDialog("お使いのブラウザは位置情報サービスに対応していません。");
             }
         }
 
@@ -717,7 +721,6 @@
         function triggerAlertEffects() {
             const overlay = document.getElementById('alert-overlay');
             try {
-                // 作成済みのグローバルコンテキストを優先利用、なければ新規生成
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 if (AudioCtx) {
                     const ctx = globalAudioCtx || new AudioCtx();
