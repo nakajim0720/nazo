@@ -597,7 +597,7 @@
                     document.getElementById('intercept-log-bar').style.width = percent + "%";
                     document.getElementById('intercept-percent-text').innerText = percent + "%";
 
-                    const randomDelay = Math.floor(Math.random() * 400) + 100; 
+                    const randomDelay = Math.floor(Math.random() * 400) + 50; 
                     setTimeout(appendNextLog, randomDelay);
                 } else {
                     setTimeout(() => {
@@ -626,69 +626,6 @@
             if (overlay) {
                 overlay.style.display = 'none';
             }
-        }
-
-        function startHack() {
-            if (!isSpyActive) {
-                showCustomDialog("ACCESS ERROR: ターゲット（スパイ）がまだ活動を開始していません。まずは基地局を調査し、スパイの出足を待て。");
-                return;
-            }
-
-            if (hasHackedOnce) {
-                showCustomDialog("ACCESS DENIED: ファイアウォールが強化され、再度の侵入は不可能です。");
-                return;
-            }
-
-            const inputVal = document.getElementById('code-input').value;
-            if (inputVal !== "YOKOHAMA") {
-                showCustomDialog("ACCESS拒否：不正なキーです。正しい解読キーを入力してください。");
-                return;
-            }
-
-            hasHackedOnce = true;
-            document.getElementById('hack-step2').style.display = 'none';
-            document.getElementById('hack-step3').style.display = 'block';
-            
-            let bar = document.getElementById('hack-bar');
-            let width = 0;
-            let interval = setInterval(() => {
-                width += 1;
-                bar.style.width = width + "%";
-                if (width >= 100) {
-                    clearInterval(interval);
-                    isHacked = true;
-
-                    if (enemyMarker && spyIconStopped) {
-                        enemyMarker.setIcon(spyIconStopped);
-                        enemyMarker.bindPopup("【システム停止】スパイ足止め中").openPopup();
-                    }
-
-                    document.getElementById('hack-result').innerHTML = 
-                        "<span style='color:#f00; text-size:18px;'>ACCESS GRANTED: 敵システム停止完了。</span>";
-
-                    setTimeout(() => {
-                        isHacked = false;
-
-                        if (enemyMarker && spyIconNormal) {
-                            enemyMarker.setIcon(spyIconNormal);
-                            enemyMarker.bindPopup("【警告】スパイのシステムが復旧！逃走中！").openPopup();
-                        }
-
-                        const banner = document.getElementById('recovery-warning-banner');
-                        document.getElementById('banner-title').innerText = "⚠️ SYSTEM RESTORED ⚠️";
-                        document.getElementById('banner-text').innerHTML = "敵のバックアップ回路が起動！<br>スパイが逃走を再開しました！";
-                        if (banner) {
-                            banner.style.display = 'block';
-                            setTimeout(() => {
-                                banner.style.display = 'none';
-                            }, 11000);
-                        }
-
-                        triggerAlertEffects();
-
-                    }, 30000);
-                }
-            }, 30);
         }
 
         function triggerAlertEffects() {
@@ -752,6 +689,70 @@
             }
         }
 
+        function startHack() {
+            if (!isSpyActive) {
+                showCustomDialog("ACCESS ERROR: ターゲット（スパイ）がまだ活動を開始していません。まずは基地局を調査し、スパイの出足を待て。");
+                return;
+            }
+
+            if (hasHackedOnce) {
+                showCustomDialog("ACCESS DENIED: ファイアウォールが強化され、再度の侵入は不可能です。");
+                return;
+            }
+
+            const inputVal = document.getElementById('code-input').value;
+            if (inputVal !== "YOKOHAMA") {
+                showCustomDialog("ACCESS拒否：不正なキーです。正しい解読キーを入力してください。");
+                return;
+            }
+
+            hasHackedOnce = true;
+            document.getElementById('hack-step2').style.display = 'none';
+            document.getElementById('hack-step3').style.display = 'block';
+            
+            let bar = document.getElementById('hack-bar');
+            let width = 0;
+            let interval = setInterval(() => {
+                width += 1;
+                bar.style.width = width + "%";
+                if (width >= 100) {
+                    clearInterval(interval);
+                    isHacked = true;
+
+                    if (enemyMarker && spyIconStopped) {
+                        enemyMarker.setIcon(spyIconStopped);
+                        enemyMarker.bindPopup("【システム停止】スパイ足止め中").openPopup();
+                    }
+
+                    document.getElementById('hack-result').innerHTML = 
+                        "<span style='color:#f00; text-size:25px;'>ACCESS GRANTED: 敵システム停止完了。</span>";
+
+                    setTimeout(() => {
+                        isHacked = false;
+
+                        if (enemyMarker && spyIconNormal) {
+                            enemyMarker.setIcon(spyIconNormal);
+                            enemyMarker.bindPopup("【警告】スパイのシステムが復旧！逃走中！").openPopup();
+                        }
+
+                        const banner = document.getElementById('recovery-warning-banner');
+                        document.getElementById('banner-title').innerText = "⚠️ SYSTEM RESTORED ⚠️";
+                        document.getElementById('banner-text').innerHTML = "敵のバックアップ回路が起動！<br>スパイが逃走を再開しました！";
+                        if (banner) {
+                            banner.style.display = 'block';
+                            setTimeout(() => {
+                                banner.style.display = 'none';
+                            }, 11000);
+                        }
+
+                        triggerAlertEffects();
+
+                    }, 30000);
+                }
+            }, 30);
+        }
+
+
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition((pos) => {
                 currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -795,7 +796,7 @@
 
                 const banner = document.getElementById('recovery-warning-banner');
                 document.getElementById('banner-title').innerText = "敵スパイ活動開始";
-                document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが移動を開始しました！追跡せよ！";
+                document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが活動を開始しました！追跡せよ！";
                 if (banner) {
                     banner.style.display = 'block';
                     setTimeout(() => {
