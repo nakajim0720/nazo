@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epilogue Test - PROJECT: OMEGA</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            font-family: monospace; background: #020202; color: #0f0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 90%; max-width: 600px; border: 1px solid #444;
+            padding: 30px; background: #080808; box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            box-sizing: border-box; min-height: 380px; position: relative;
+        }
+
+        h2 {
+            color: #0f0; border-bottom: 1px solid #0f0; padding-bottom: 10px;
+            margin-top: 0; font-size: 18px; letter-spacing: 1px;
+        }
+
+        .text-area {
+            font-size: 13px; line-height: 1.8; color: #ccc; min-height: 220px;
+            white-space: pre-wrap; word-break: break-all;
+        }
+
+        .footer-credit {
+            text-align: center; margin-top: 25px; font-size: 14px;
+            color: #0f0; font-weight: bold; letter-spacing: 2px; opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        /* コントロール用ボタンパネル */
+        .control-panel {
+            position: fixed; bottom: 20px; display: flex; gap: 10px; z-index: 100;
+        }
+        .test-btn {
+            background: #000; color: #0f0; border: 1px solid #0f0;
+            padding: 8px 15px; font-family: monospace; cursor: pointer; font-size: 12px;
+        }
+        .test-btn:hover { background: #0f0; color: #000; }
+
+        /* パターン2用のフェードスタイル */
+        .fade-paragraph {
+            opacity: 0; transform: translateY(10px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+            margin-bottom: 15px;
+        }
+        .fade-paragraph.show {
+            opacity: 1; transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>[EPILOGUE: AFTERMATH]</h2>
+        <div id="epilogue-content" class="text-area"></div>
+        <div id="epilogue-footer" class="footer-credit">【 PROJECT: OMEGA - YOKOHAMA LEGACY 】 —— 完</div>
+    </div>
+
+    <!-- テスト切り替えボタン -->
+    <div class="control-panel">
+        <button class="test-btn" onclick="startPattern1()">パターン1: タイプライター風</button>
+        <button class="test-btn" onclick="startPattern2()">パターン2: フィルム（順次表示）</button>
+    </div>
+
+    <script>
+        const epilogueText = 
+`事件から数週間後。
+国家を揺るがした「オメガ・ブループリント」漏洩未遂事件は、表向きには「極秘裏に処理された単なる情報漏洩インシデント」として処理されていた。
+
+組織の追っ手から逃れるため、かつて公式に「死亡」が発表されていた元主任技師・岡本正造。
+しかし、その死は国家の最高機密として行われた完全な偽装工作であり、彼の生存と真実を知る者は、国家中枢のごく一部の人間だけだった。
+
+混乱の渦中から姿を消した彼は、今や国に手厚く保護され、全く別の名前と静かな日常を与えられていた。
+1985年当時ですでに50代だった彼は、かつての激動の人生を遠い過去のものとするように、日本のどこかの穏やかな街で、静かに余生を過ごしているという――。`;
+
+        let currentTimer = null;
+
+        function resetTest() {
+            if (currentTimer) clearTimeout(currentTimer);
+            document.getElementById('epilogue-content').innerHTML = "";
+            document.getElementById('epilogue-footer').style.opacity = 0;
+        }
+
+        // ==========================================
+        // パターン1：暗号解読風・タイプライター演出
+        // ==========================================
+        function startPattern1() {
+            resetTest();
+            let contentDiv = document.getElementById('epilogue-content');
+            let index = 0;
+            let speed = 35; // 文字送り速度（ミリ秒）
+
+            function typing() {
+                if (index < epilogueText.length) {
+                    contentDiv.innerHTML += epilogueText.charAt(index);
+                    index++;
+                    currentTimer = setTimeout(typing, speed);
+                } else {
+                    // 全文表示完了後にフッターを表示
+                    document.getElementById('epilogue-footer').style.opacity = 1;
+                }
+            }
+            typing();
+        }
+
+        // ==========================================
+        // パターン2：フィルム風（段落ごとのフェードイン）
+        // ==========================================
+        function startPattern2() {
+            resetTest();
+            let contentDiv = document.getElementById('epilogue-content');
+            let paragraphs = epilogueText.split('\n\n'); // 段落ごとに分割
+            
+            let html = "";
+            paragraphs.forEach((p, i) => {
+                html += `<div id="para-${i}" class="fade-paragraph">${p}</div>`;
+            });
+            contentDiv.innerHTML = html;
+
+            let currentPara = 0;
+            function showNextParagraph() {
+                if (currentPara < paragraphs.length) {
+                    let elem = document.getElementById(`para-${currentPara}`);
+                    if (elem) elem.classList.add('show');
+                    currentPara++;
+                    currentTimer = setTimeout(showNextParagraph, 1200); // 1.2秒おきに次の段落へ
+                } else {
+                    document.getElementById('epilogue-footer').style.opacity = 1;
+                }
+            }
+            showNextParagraph();
+        }
+
+        // ページ読み込み時はデフォルトでパターン1を実行
+        window.onload = () => {
+            startPattern1();
+        };
+    </script>
+</body>
+</html>

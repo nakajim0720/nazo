@@ -4,9 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PROJECT: OMEGA - YOKOHAMA LEGACY</title>
-    <!-- Leaflet CSS -->
+    <!-- Leaflet CSS（地図描画ライブラリ用） -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Fuse.js（あいまい検索ライブラリ）のCDN読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.basic.min.js"></script>
     <style>
+        /* ==========================================
+           1. 全体レイアウト・ベーススタイル
+           ========================================== */
         body, html { margin: 0; padding: 0; height: 100%; font-family: monospace; background: #000; color: #0f0; overflow: hidden; }
         
         /* ステップ1：オープニング動画全画面表示 */
@@ -29,7 +34,7 @@
         #page-welcome { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0; z-index: 9999; box-sizing: border-box; padding: 20px; text-align: center; overflow-y: auto; }
         .welcome-box { max-width: 450px; width: 100%; border: 1px solid #0f0; padding: 20px; background: #050505; box-shadow: 0 0 20px rgba(0,255,0,0.3); box-sizing: border-box; }
         
-        /* ロゴ画像コンテナ（サイズを大きく調整） */
+        /* ロゴ画像コンテナ（サイズ拡大対応） */
         .game-logo-container { text-align: center; padding: 12px; background: #000; border: 1px solid #0f0; margin-bottom: 15px; box-shadow: 0 0 10px rgba(0,255,0,0.2); }
         .game-logo-img { width: 100%; height: auto; max-height: 200px; object-fit: contain; display: block; margin: 0 auto; }
         
@@ -39,7 +44,9 @@
         .start-btn { background: #000; color: #0f0; border: 2px solid #0f0; padding: 12px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; box-shadow: 0 0 10px rgba(0,255,0,0.4); transition: 0.2s; font-family: monospace; width: 100%; margin-top: 15px; }
         .start-btn:active { background: #0f0; color: #000; }
 
-        /* ヘッダー・ハンバーガーメニュー */
+        /* ==========================================
+           2. ヘッダー ＆ ナビゲーションメニュー
+           ========================================== */
         .header { height: 50px; background: #111; border-bottom: 1px solid #0f0; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; position: relative; z-index: 1001; }
         .hamburger-btn { background: none; border: none; color: #0f0; font-size: 24px; cursor: pointer; }
 
@@ -53,6 +60,9 @@
         .page { display: none; height: calc(100vh - 50px); width: 100%; box-sizing: border-box; padding: 15px; overflow-y: auto; }
         .page.active { display: block; }
 
+        /* ==========================================
+           3. マップ ＆ ステータスカード
+           ========================================== */
         #map-container { position: relative; height: 100%; width: 100%; }
         #map { height: 100%; width: 100%; }
         .map-control-btn { position: absolute; bottom: 20px; right: 20px; z-index: 999; background: #000; color: #0f0; border: 2px solid #0f0; padding: 10px 15px; font-weight: bold; cursor: pointer; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,255,0,0.3); }
@@ -63,7 +73,13 @@
         .puzzle-tab-btn.active-puzzle { background: #0f0; color: #000; font-weight: bold; }
         .puzzle-content { display: none; border: 1px solid #0f0; padding: 15px; margin-top: 10px; background: #050505; }
         .puzzle-content.active-puzzle { display: block; }
+        
+        .secret-file-box { border: 1px dashed #0ff; background: #001111; padding: 10px; margin-top: 12px; font-size: 12px; color: #0ff; line-height: 1.5; }
+        .radio-log-card { border: 1px dashed #0f0; background: #020802; padding: 12px; margin-bottom: 12px; font-size: 12px; line-height: 1.5; }
 
+        /* ==========================================
+           4. 信号強度（シグナル）バロメータ
+           ========================================== */
         .signal-container { margin-top: 8px; background: #000; border: 1px solid #0f0; padding: 8px; box-sizing: border-box; }
         .signal-label { font-size: 11px; margin-bottom: 4px; display: flex; justify-content: space-between; }
         .signal-bar-bg { width: 100%; height: 10px; background: #111; border: 1px solid #333; position: relative; overflow: hidden; }
@@ -74,10 +90,33 @@
 
         @keyframes pulseRed { 0% { opacity: 0.6; } 100% { opacity: 1.0; } }
 
+        /* ==========================================
+           5. アラート・ダイアログ・無線・ローディング
+           ========================================== */
         #custom-dialog-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); display: none; align-items: center; justify-content: center; z-index: 99999; }
         .custom-dialog-box { background: #050505; border: 2px solid #f00; color: #f00; padding: 20px; width: 80%; max-width: 320px; text-align: center; box-shadow: 0 0 20px rgba(255, 0, 0, 0.4); font-family: monospace; border-radius: 4px; }
         .custom-dialog-btn { background: #000; color: #f00; border: 1px solid #f00; padding: 8px 20px; margin-top: 15px; font-weight: bold; cursor: pointer; font-family: monospace; }
         .custom-dialog-btn:hover { background: #f00; color: #000; }
+
+        /* 認証中ローディング・オーバーレイ（クルクル表示） */
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 99997; }
+        .spinner { width: 50px; height: 50px; border: 4px solid #111; border-top: 4px solid #0f0; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 15px; box-shadow: 0 0 15px rgba(0,255,0,0.5); }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #hq-radio-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 99998; padding: 20px; box-sizing: border-box; }
+        .hq-radio-box { background: #020b02; border: 2px solid #0f0; color: #0f0; padding: 20px; width: 100%; max-width: 400px; box-shadow: 0 0 25px rgba(0,255,0,0.4); font-family: monospace; border-radius: 6px; box-sizing: border-box; }
+        .hq-radio-header { font-size: 11px; color: #888; border-bottom: 1px dashed #030; padding-bottom: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; }
+        .hq-radio-text { font-size: 13px; line-height: 1.6; color: #0f0; margin-bottom: 20px; white-space: pre-wrap; }
+        .hq-radio-btn { background: #000; color: #0f0; border: 1px solid #0f0; padding: 10px 20px; font-weight: bold; cursor: pointer; font-family: monospace; width: 100%; border-radius: 4px; }
+        .hq-radio-btn:hover { background: #0f0; color: #000; }
+
+        .browser-toolbar { background: #1a1a1a; border: 1px solid #0f0; padding: 8px; display: flex; align-items: center; gap: 8px; margin-bottom: 15px; }
+        .browser-address-bar { flex-grow: 1; background: #000; border: 1px solid #333; color: #0ff; padding: 6px 10px; font-size: 12px; font-family: monospace; }
+        .browser-search-box { display: flex; gap: 8px; margin-bottom: 15px; }
+        .browser-input { flex-grow: 1; background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px; font-family: monospace; }
+        .browser-btn { background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px 15px; font-weight: bold; cursor: pointer; font-family: monospace; }
+        .browser-btn:hover { background: #0f0; color: #000; }
+        .browser-result-card { border: 1px solid #0f0; background: #050a05; padding: 15px; margin-top: 15px; font-size: 13px; line-height: 1.6; }
 
         .spy-icon { animation: breathing 2s ease-in-out infinite; transform-origin: 50% 50%; overflow: hidden; }
         @keyframes breathing { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
@@ -93,6 +132,30 @@
         .terminal-stream-box { background: #000; border: 1px solid #0f0; color: #0f0; font-family: monospace; font-size: 11px; padding: 10px; height: 120px; overflow-y: hidden; text-align: left; box-sizing: border-box; margin-top: 10px; position: relative; }
         .terminal-stream-box::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; background: linear-gradient(transparent, #000); pointer-events: none; }
         .stream-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+
+        /* コングラッチレーション画面スタイル */
+        #page-congrats { background: #000; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
+        #page-congrats.active { display: flex; }
+        .congrats-box { border: 2px solid #0f0; padding: 30px; background: #051a05; max-width: 500px; width: 100%; box-shadow: 0 0 30px rgba(0,255,0,0.5); border-radius: 6px; }
+        .congrats-title { font-size: 22px; color: #0f0; text-shadow: 0 0 10px #0f0; margin-top: 0; letter-spacing: 2px; }
+        .congrats-btn { background: #000; color: #0f0; border: 2px solid #0f0; padding: 12px 25px; font-size: 15px; font-weight: bold; cursor: pointer; font-family: monospace; margin-top: 25px; border-radius: 4px; box-shadow: 0 0 15px rgba(0,255,0,0.5); width: 100%; transition: 0.2s; }
+        .congrats-btn:hover { background: #0f0; color: #000; }
+
+        /* 後日談エピローグ画面（フィルム風順次表示） */
+        #page-epilogue { background: #020202; color: #ccc; padding: 30px; box-sizing: border-box; }
+        .epilogue-box { max-width: 600px; margin: 0 auto; border: 1px solid #444; padding: 30px; background: #080808; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
+        .fade-paragraph {
+            opacity: 0; transform: translateY(10px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+            margin-bottom: 15px; font-size: 13px; line-height: 1.8; color: #ccc;
+        }
+        .fade-paragraph.show {
+            opacity: 1; transform: translateY(0);
+        }
+        .epilogue-footer {
+            text-align: center; margin-top: 30px; font-size: 14px; color: #0f0; font-weight: bold; letter-spacing: 2px;
+            opacity: 0; transition: opacity 1s ease;
+        }
     </style>
 </head>
 <body>
@@ -101,6 +164,23 @@
             <h3 style="margin-top: 0; font-size: 16px;">⚠️ ACCESS DENIED</h3>
             <p id="custom-dialog-text" style="font-size: 13px; color: #ff5555; line-height: 1.5; margin-bottom: 15px;"></p>
             <button class="custom-dialog-btn" onclick="closeCustomDialog()">確認</button>
+        </div>
+    </div>
+
+    <!-- 認証中ローディング（クルクル） -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div style="font-family: monospace; font-size: 13px; color: #0f0; letter-spacing: 1px;">[SECURE] データベース照合・暗号解析中...</div>
+    </div>
+
+    <div id="hq-radio-overlay">
+        <div class="hq-radio-box">
+            <div class="hq-radio-header">
+                <span id="hq-radio-freq">FREQ: 142.2 - HQ_SECURE</span>
+                <span>[INCOMING TRANSMISSION]</span>
+            </div>
+            <p id="hq-radio-msg" class="hq-radio-text"></p>
+            <button class="hq-radio-btn" onclick="closeHqRadio()">[ 通信を確認・閉じる ]</button>
         </div>
     </div>
 
@@ -113,7 +193,6 @@
         </p>
     </div>
 
-    <!-- ステップ1：オープニング動画全画面表示画面 -->
     <div id="page-intro-video">
         <div class="intro-video-container">
             <video id="intro-vid" src="./opening.mp4" controls playsinline autoplay style="width: 100%; max-height: 65vh; object-fit: contain; background: #000;"></video>
@@ -121,10 +200,8 @@
         </div>
     </div>
 
-    <!-- ステップ2：ロゴ＆安全注意喚起 ＆ 作戦開始画面 -->
     <div id="page-welcome">
         <div class="welcome-box">
-            <!-- ロゴ画像表示エリア（サイズ拡大） -->
             <div class="game-logo-container">
                 <img src="./img/logo.jpeg" alt="PROJECT: OMEGA - YOKOHAMA LEGACY" class="game-logo-img" onerror="this.style.display='none'; document.getElementById('fallback-logo').style.display='block';">
                 <div id="fallback-logo" style="display:none;">
@@ -136,7 +213,7 @@
 
             <p style="color: #ccc; font-size: 15px; line-height: 1.5; margin-bottom: 15px; text-align: left;">
                 【エージェントへの指令とお願い】<br>
-                ・制限時間：2時間<br>
+                ・制限時間：2時間[cite: 1]<br>
                 ・周囲の安全に注意し、歩きスマホは絶対におやめください。<br>
                 ・歩道や公共のルールを厳守し、絶対に走らないこと。
             </p>
@@ -157,9 +234,10 @@
         <a class="nav-item" onclick="switchPage('page-map')">02. マップ（追跡モニター）</a>
         <a class="nav-item" onclick="switchPage('page-hack')">03. ハッキング</a>
         <a class="nav-item" onclick="switchPage('page-puzzle')">04. ミッションファイル</a>
+        <a class="nav-item" onclick="switchPage('page-browser')">05. 調査ブラウザ (HQ Terminal)</a>
+        <a class="nav-item" onclick="switchPage('page-radiolog')">06. 司令部通信ログ</a>
     </div>
 
-    <!-- 01. トップ画面 -->
     <div id="page-home" class="page">
         <div class="status-card">
             <h3>【作戦ステータス】</h3>
@@ -180,11 +258,12 @@
             <h3>【クイックアクセス】</h3>
             <button onclick="switchPage('page-map')" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:10px; margin-bottom:8px;">マップを開く</button>
             <button onclick="switchPage('page-hack')" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:10px; margin-bottom:8px;">ハッキング端末を開く</button>
-            <button onclick="switchPage('page-puzzle')" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:10px;">ミッションファイルを開く</button>
+            <button onclick="switchPage('page-puzzle')" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:10px; margin-bottom:8px;">ミッションファイルを開く</button>
+            <button onclick="switchPage('page-browser')" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:10px; margin-bottom:8px;">調査ブラウザを開く</button>
+            <button onclick="switchPage('page-radiolog')" style="width:100%; background:#000; color:#0f0; border:1px solid #0f0; padding:10px;">司令部通信ログを見る</button>
         </div>
     </div>
 
-    <!-- 02. マップ画面 -->
     <div id="page-map" class="page" style="padding: 0;">
         <div id="map-container">
             <div id="map"></div>
@@ -198,14 +277,11 @@
         </div>
     </div>
 
-    <!-- 03. ハッキング画面 -->
     <div id="page-hack" class="page">
         <h3>💻 敵システム・侵入ツール</h3>
-        
         <div id="hack-step1">
             <p>📡 敵の無線通信を傍受・解析せよ。</p>
             <button id="intercept-btn" onclick="startIntercept()" style="background:#000; color:#0f0; border:1px solid #0f0; padding:10px 20px;">傍受を開始</button>
-            
             <div id="intercept-progress-container" style="display:none; margin:15px 0;">
                 <div style="font-size:10px; margin-bottom:5px; display:flex; justify-content:space-between;">
                     <span>[SYSTEM] パケット解析中...</span>
@@ -231,10 +307,9 @@
         </div>
     </div>
 
-    <!-- 04. ミッションファイル（山下公園 ➔ 氷川丸 ➔ くじらの背中 ➔ 赤レンガ ➔ 日本丸） -->
     <div id="page-puzzle" class="page">
-        <h3>🧩 ミッションファイル</h3>
-        <p style="font-size: 12px; color: #888;">横浜の海沿いを巡り、岡本正造の遺した暗号を解き明かせ。</p>
+        <h3>🧩 ミッションファイル（パンフレット連動）</h3>
+        <p style="font-size: 12px; color: #888;">手元の紙パンフレット（岡本の手記P03〜P07）とアプリ内データベースを照合し、謎を解け。</p>
         
         <div style="margin-bottom: 15px; overflow-x: auto; white-space: nowrap;">
             <button class="puzzle-tab-btn active-puzzle" onclick="switchPuzzle('p1', this)">Stage 1</button>
@@ -245,57 +320,129 @@
         </div>
 
         <div id="p1" class="puzzle-content active-puzzle">
-            <h4>■ ステージ1：始まりの地点（山下公園）</h4>
-            <p><strong>【問題】</strong><br>港町を見下ろす赤い靴の少女像、その近くに眠る最初のキーワードを見つけ出せ。</p>
+            <h4>■ ステージ1：始まりの地点（山下公園 / パンフレットP03）</h4>
+            <p><strong>【問題】</strong><br>手記に記された「配属の季節」と、調査ブラウザに眠る研究所の「創立の時」を突き合わせよ。真の経過年数を算出し、認証キー（半角数字）を入力せよ。<br><span style="font-size:11px; color:#ff0;">ヒント: 調査ブラウザで「横浜船舶技術研究所」の設立データを検索せよ。</span></p>
             <div style="margin-top: 10px;">
-                <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
-                <button style="background:#0f0; border:none; padding:6px; font-weight:bold;">認証</button>
+                <input type="text" id="puzzle-input-1" placeholder="答えを入力 (半角数字)" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
+                <button onclick="checkPuzzle(1)" style="background:#0f0; border:none; padding:6px; font-weight:bold; cursor:pointer;">認証</button>
             </div>
-            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 山下公園の周辺を探索せよ。</p>
+            <div id="secret-box-1" class="secret-file-box">
+                <strong>【復元された機密メモ 01】</strong><br>
+                <span id="secret-text-1">？？？（未開放：ステージ1の認証を完了せよ）</span>
+            </div>
         </div>
 
         <div id="p2" class="puzzle-content">
-            <h4>■ ステージ2：鋼鉄の巨人（氷川丸）</h4>
-            <p><strong>【問題】</strong><br>海に浮かぶ巨大な歴史的船舶。そのスクリュー付近に隠された数字の合計は？</p>
+            <h4>■ ステージ2：鋼鉄の巨人（氷川丸 / パンフレットP04）</h4>
+            <p><strong>【問題】</strong><br>手記の指示通りにシャフトの後ろを探しても何も見つからない。物事の裏側を見通すため、該当ページに隠された真の英単語（半角小文字）を暴け。</p>
             <div style="margin-top: 10px;">
-                <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
-                <button style="background:#0f0; border:none; padding:6px; font-weight:bold;">認証</button>
+                <input type="text" id="puzzle-input-2" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
+                <button onclick="checkPuzzle(2)" style="background:#0f0; border:none; padding:6px; font-weight:bold; cursor:pointer;">認証</button>
             </div>
-            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 氷川丸の看板や案内板を注視せよ。</p>
+            <div id="secret-box-2" class="secret-file-box" style="opacity: 0.6;">
+                <strong>【復元された機密メモ 02】</strong><br>
+                <span id="secret-text-2">？？？（未開放：ステージ2の認証を完了せよ）</span>
+            </div>
         </div>
 
         <div id="p3" class="puzzle-content">
-            <h4>■ ステージ3：洋上の見張り台（くじらの背中）</h4>
-            <p><strong>【問題】</strong><br>波間に浮かぶ巨大なクジラの背中。そのウッドデッキの先端に刻まれた、座標を示す数字を暴け。</p>
+            <h4>■ ステージ3：洋上の見張り台（くじらの背中 / パンフレットP05）</h4>
+            <p><strong>【問題】</strong><br>パンフレットP05の航海日誌に記された数式パズルを解き、導き出された「数字（半角数字）」を入力せよ。その数字が、フットスタンプ上で向くべき方向の決定打となる。</p>
             <div style="margin-top: 10px;">
-                <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
-                <button style="background:#0f0; border:none; padding:6px; font-weight:bold;">認証</button>
+                <input type="text" id="puzzle-input-3" placeholder="答えを入力 (半角数字)" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
+                <button onclick="checkPuzzle(3)" style="background:#0f0; border:none; padding:6px; font-weight:bold; cursor:pointer;">認証</button>
             </div>
-            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 大さん橋の屋上（くじらの背中）の先端を確認せよ。</p>
+            <div id="secret-box-3" class="secret-file-box" style="opacity: 0.6;">
+                <strong>【復元された機密メモ 03】</strong><br>
+                <span id="secret-text-3">？？？（未開放：ステージ3の認証を完了せよ）</span>
+            </div>
         </div>
 
         <div id="p4" class="puzzle-content">
-            <h4>■ ステージ4：赤レンガの迷宮（赤レンガ倉庫）</h4>
-            <p><strong>【問題】</strong><br>歴史ある倉庫群のなかに刻まれた、かつてのレンガ職人のイニシャルを繋げ。</p>
+            <h4>■ ステージ4：赤レンガの迷宮（赤レンガ倉庫 / パンフレットP06）</h4>
+            <p><strong>【問題】</strong><br>パンフレットP06の割り当て表と、調査ブラウザのセキュリティ監査ログを精査し、タイムスタンプの矛盾を引き起こした「なりすまし端末のコードネーム（英語小文字）」を暴け。</p>
             <div style="margin-top: 10px;">
-                <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
-                <button style="background:#0f0; border:none; padding:6px; font-weight:bold;">認証</button>
+                <input type="text" id="puzzle-input-4" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
+                <button onclick="checkPuzzle(4)" style="background:#0f0; border:none; padding:6px; font-weight:bold; cursor:pointer;">認証</button>
             </div>
-            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: 赤レンガ倉庫の壁面やモニュメントに注目せよ。</p>
+            <div id="secret-box-4" class="secret-file-box" style="opacity: 0.6;">
+                <strong>【復元された機密メモ 04】</strong><br>
+                <span id="secret-text-4">？？？（未開放：ステージ4の認証を完了せよ）</span>
+            </div>
         </div>
 
         <div id="p5" class="puzzle-content">
-            <h4>■ ファイナルステージ：造船の記憶（日本丸周辺）</h4>
+            <h4>■ ファイナルステージ：造船の記憶（日本丸周辺 / パンフレットP07）</h4>
             <p><strong>【問題】</strong><br>すべての情報を統合せよ。かつての巨大ドックが眠るこの地で、スパイが狙う中枢データの解読キーは？</p>
             <div style="margin-top: 10px;">
-                <input type="text" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
-                <button style="background:#0f0; border:none; padding:6px; font-weight:bold;">認証</button>
+                <input type="text" id="puzzle-input-5" placeholder="答えを入力" style="background:#000; color:#0f0; border:1px solid #0f0; padding:5px; width:60%;">
+                <button onclick="checkPuzzle(5)" style="background:#0f0; border:none; padding:6px; font-weight:bold; cursor:pointer;">認証</button>
             </div>
-            <p style="font-size: 11px; color: #888; margin-top: 10px;">ヒント: これまで集めたすべてのピースを組み合わせろ。</p>
+            <div id="secret-box-5" class="secret-file-box" style="opacity: 0.6;">
+                <strong>【作戦完了・全ファイル復元】</strong><br>
+                <span id="secret-text-5">？？？（未開放：ファイナルステージをクリアせよ）</span>
+            </div>
         </div>
     </div>
 
-    <!-- Leaflet JS & Rotated Marker Plugin -->
+    <div id="page-browser" class="page">
+        <h3>🌐 調査ブラウザ (HQ Terminal)</h3>
+        <p style="font-size: 12px; color: #888; margin-bottom: 15px;">組織が管理する極秘データベース。キーワードを入力してアーカイブを調査せよ。</p>
+        
+        <div class="browser-toolbar">
+            <span style="color:#0f0;">🔒 https://</span>
+            <input type="text" id="browser-url-input" class="browser-address-bar" value="yokohama-legacy.hq/archive/search" readonly>
+        </div>
+
+        <div class="browser-search-box">
+            <input type="text" id="browser-keyword-input" class="browser-input" placeholder="検索ワードを入力 (例: 横浜船舶技術研究所, 氷川丸 など)">
+            <button class="browser-btn" onclick="executeBrowserSearch()">検索</button>
+        </div>
+
+        <div id="browser-result-container" class="browser-result-card">
+            <div style="color: #666;">[SYSTEM READY] 検索ワードを入力してください。</div>
+        </div>
+    </div>
+
+    <div id="page-radiolog" class="page">
+        <h3>📻 司令部通信ログ一覧</h3>
+        <p style="font-size: 12px; color: #888; margin-bottom: 15px;">司令部（HQ）から受信したすべての暗号無線記録。</p>
+        <div id="radio-log-container"></div>
+    </div>
+
+    <!-- 07. コングラッチレーション画面 -->
+    <div id="page-congrats" class="page">
+        <div style="display: flex; align-items: center; justify-content: center; height: 100%;">
+            <div class="congrats-box">
+                <h2 class="congrats-title">🎉 MISSION COMPLETE 🎉</h2>
+                <p style="font-size: 14px; line-height: 1.6; color: #cfc; margin-bottom: 20px;">
+                    全ステージのミッションを完全に突破し、国家の危機を救い出しました！<br>
+                    エージェント、見事な任務遂行です。
+                </p>
+                <button class="congrats-btn" onclick="switchPage('page-epilogue')">≫ 作戦後日談（エピローグ）を読む</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 08. 後日談エピローグ画面 -->
+    <div id="page-epilogue" class="page">
+        <div class="epilogue-box">
+            <h2 style="color: #0f0; border-bottom: 1px solid #0f0; padding-bottom: 10px; margin-top: 0; font-size: 18px;">[EPILOGUE: AFTERMATH]</h2>
+            <div id="epilogue-text-container" style="min-height: 220px; margin-top: 15px;">
+                <div id="ep-p0" class="fade-paragraph">事件から数週間後。</div>
+                <div id="ep-p1" class="fade-paragraph">国家を揺るがした「オメガ・ブループリント」漏洩未遂事件は、表向きには「極秘裏に処理された単なる情報漏洩インシデント」として処理されていた。</div>
+                <div id="ep-p2" class="fade-paragraph">組織の追っ手から逃れるため、かつて公式に「死亡」が発表されていた元主任技師・岡本正造。</div>
+                <div id="ep-p3" class="fade-paragraph">しかし、その死は国家の最高機密として行われた完全な偽装工作であり、彼の生存と真実を知る者は、国家中枢のごく一部の人間だけだった。</div>
+                <div id="ep-p4" class="fade-paragraph">混乱の渦中から姿を消した彼は、今や国に手厚く保護され、全く別の名前と静かな日常を与えられていた。</div>
+                <div id="ep-p5" class="fade-paragraph">1985年当時ですでに50代だった彼は、かつての激動の人生を遠い過去のものとするように、日本のどこかの穏やかな街で、静かに余生を過ごしているという――。</div>
+            </div>
+            <div id="ep-footer" class="epilogue-footer">
+                【 PROJECT: OMEGA - YOKOHAMA LEGACY 】 —— 完
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS ＆ Leaflet Rotate Plugin -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotate-map@0.3.1/dist/leaflet-rotate-map.js"></script>
     <script>
@@ -308,8 +455,109 @@
         
         let isSpyActive = false;
         let startTime = 0; 
-        const totalDurationMs = 120 * 60 * 1000; // 制限時間：120分（2時間）
-        const spyActivationDelayMs = 0.2 * 60 * 1000; // 5分後にスパイ活動開始
+        const totalDurationMs = 120 * 60 * 1000;
+        const spyActivationDelayMs = 0.2 * 60 * 1000;
+
+        let radioLogs = [];
+        let pendingUnlockStage = null;
+        let maxClearedStage = 0;
+        let epilogueTimer = null;
+
+        const puzzleAnswers = {
+            1: "12",          // 1964 - 1952 = 12
+            2: "translucent", // 透かしギミックの答え
+            3: "2",           // 航海日誌の謎を解いて得られる数字
+            4: "initial",     // 不正アクセス端末のコード
+            5: "omega"        // 最終解読キー
+        };
+
+        const secretStories = {
+            1: "岡本正造は、1964年の配属当時、平和的な船舶の最先端設計に没頭していた。しかし時代の要請により、研究所は徐々に潜水艦技術（プロジェクト・オメガ）の極秘研究へシフトさせられていった。",
+            2: "彼が所持していた機密データは「オメガ・ブループリント（次世代型潜水艦の骨格構造データ）」と呼ばれる代物であり、国防上の致命的な極秘資料であった。",
+            3: "なぜあの国がこのデータを狙うのか。この造船機密が流出すると、国内の主要な港湾インフラや造船ドックの強度が敵国に把握され、海上防衛網が完全に無力化されるからだった。",
+            4: "岡本正造は敵に追われて逃げたのではない。彼は、組織の内部に潜む「裏切り者（内通者）」を炙り出すため、自らがあえて「おとり」となり、機密を抱えて横浜に潜伏していたのだった。",
+            5: "すべてのピースが結びつき、敵のネットワークへのアクセスを完全に遮断。岡本正造が命がけで守り抜いた造船の機密は安全な領域へ退避され、国家を揺るがす陰謀は完全に粉砕された。"
+        };
+
+        const browserDatabaseList = [
+            { 
+                title: "横浜船舶技術研究所 (Y.S.I.L.)", 
+                body: "【公式アーカイブ：沿革】\nYokohama Shipbuilding & Innovation Laboratory（Y.S.I.L.）。1952年（昭和27年）4月1日設立。\nかつて横浜港の臨海地区にひそかに存在していた政府管轄の高度海洋技術研究機関。\n表面上は民間造船業の近代化支援を掲げていたが、その実態は冷戦下の海洋防衛を支えるための次世代型船舶構造・超高効率潜水艦フレームの極秘研究を行っていた中枢施設である。\n1985年の組織再編に伴い、公式の歴史からはその名称が完全に抹消されている。", 
+                requiredStage: 0 
+            },
+            { 
+                title: "東洋海運アーカイブ", 
+                body: "【公開データベース抜粋】\n戦前・戦中・戦後の横浜港における船舶交通、ドックの稼働状況、および海運業に関する膨大な航海日誌や設計図面をデジタル保存している民間の歴史資料プラットフォーム。\nただし、1985年前後の特定期間のデータがごっそり欠落している。", 
+                requiredStage: 0 
+            },
+            { 
+                title: "岡本正造", 
+                body: "【人物ファイル #0491】\n元・横浜船舶技術研究所 (Y.S.I.L.) 主幹技師。1930年生。\n1964年（昭和39年）にY.S.I.L.へ配属され、民間船設計からプロジェクト・オメガの最終設計へと関与した。卓越した数学的直感と流体力学の知識を持ち、国内外の造船業界において数々の革新的なフレーム構造を発案した天才エンジニア。\n温厚な性格で知られていたが、プロジェクト・オメガの最終設計段階に入って以降、急激に周囲との接触を断つようになり、その後の動向は国家機密として厳重に封印されていた。", 
+                requiredStage: 0 
+            },
+            { 
+                title: "氷川丸", 
+                body: "【歴史的船舶データ】\n1930年に竣工した北米航路向けの歴史的貨客船。戦時には海軍病院船として多くの負傷兵を運び、幾度もの海上爆撃や触雷を奇跡的に乗り越えた「鋼鉄の巨人」。\nその船体構造の頑強さは当時の日本の最高峰技術の結晶であり、Y.S.I.L.初期の研究資料においても、装甲と耐圧殻のベンチマークとして度々言及されている。", 
+                requiredStage: 0 
+            },
+            { 
+                title: "山下公園", 
+                body: "【エリア情報：山下公園】\n関東大震災の復興事業として、港の瓦礫を再利用して埋め立てられた日本初の臨海公園。港町を見下ろす「赤い靴の少女像」が佇み、本件における捜査の起点となった場所。", 
+                requiredStage: 0 
+            },
+            { 
+                title: "赤レンガ倉庫 (横浜市赤レンガ倉庫)", 
+                body: "【施設カルテ】\n明治末期から大正期にかけて国の模範倉庫として建設された赤レンガ造りの建築群。かつては保税倉庫として横浜港の物流を支えていた。\n頑強な構造の裏には当時の最先端建築工法が用いられており、壁面には往時のレンガ職人たちが残した固有の刻印やイニシャルが刻み込まれている。", 
+                requiredStage: 0 
+            },
+            { 
+                title: "大さん橋 (くじらの背中)", 
+                body: "【港湾インフラデータ】\n横浜港における最古にして最大の国際客船ターミナル。屋上のウッドデッキは「くじらの背中」の愛称で親しまれている。\n海原を一望できるその構造は、かつて海上防衛および物資輸送のモニタリング拠点としても重要な役割を担っていた。", 
+                requiredStage: 0 
+            },
+            { 
+                title: "日本丸メモリアルパーク", 
+                body: "【記念公園データ】\n「太平洋の白鳥」と称された美しい練習帆船・日本丸の保存と、かつて横浜船渠（ドック）として栄えた歴史を伝えるメモリアル施設。\n周辺に眠るドックの遺構は、近代日本の造船技術の栄枯盛衰を今に伝える重要文化財級のスポットである。", 
+                requiredStage: 3 
+            },
+            { 
+                title: "オメガ・ブループリント", 
+                body: "【極秘指定文書：PROJECT OMEGA】\nY.S.I.L.が遺した、国家の海上防衛網の根幹を揺るがす次世代型潜水艦の骨格構造データ。\n水圧を極限まで分散させる特殊なハニカムフレーム構造と、従来の常識を覆す超静音推進プラットフォームの設計図が網羅されている。\n万が一このデータが海外の敵対勢力に渡った場合、日本国内の主要な造船ドックや港湾インフラの致命的な構造的弱点が完全に露呈し、国防上の致命的な危機を招く。", 
+                requiredStage: 1 
+            },
+            { 
+                title: "スクリュー駆動軸 (特殊合金)", 
+                body: "【技術仕様書抜粋】\n通常の船舶用プロペラとは異なり、無響音水槽での徹底的な実験を経て開発された超低キャビテーション型の特殊推進パーツ。\n海洋音響探知（ソナー）に一切引っかからない特殊な表面コーティングが施されており、プロジェクト・オメガの心臓部をなす技術。", 
+                requiredStage: 1 
+            },
+            { 
+                title: "内通者 (インサイダー)", 
+                body: "【セキュリティ監査・内部告発ログ】\n東洋海運アーカイブのサーバーに残されたログの断片から、Y.S.I.L.の内部ネットワークに『外部からの不正な常時接続回線（バックドア）』が構築されていた事実が発覚。\n何者かが組織の権限を悪用し、プロジェクト・オメガの機密データを少しずつ国外へリークしていた疑いが強い。", 
+                requiredStage: 3 
+            },
+            { 
+                title: "裏切り者の影 (セキュリティインシデント)", 
+                body: "【内部調査特別報告書】\n昭和60年秋、所内端末から突如として海外向けの高圧縮暗号パケットが送信された異常ログ。送信元の端末 ID は当時、岡本正造の管理エリアに割り当てられていたものだった。\nしかし、当時の同僚たちの証言によれば、岡本自身はその時刻に現場を離れており、別何者かが彼の権限を「なりすまし」て利用していた可能性が極めて高いとされる。", 
+                requiredStage: 3 
+            },
+            { 
+                title: "昭和六十年 (1985年)", 
+                body: "【機密年表：激動の時代】\n横浜港のベイエリア再開発が急速に進む一方で、冷戦下の水面下では高度な軍事・造船技術を巡る諜報戦が激化していた年。\n岡本正造が「オメガ・ブループリント」の完成直後に突然の「失踪（のちの公式な死亡発表）」を遂げたことで、組織内外に大きな混乱と隠蔽工作の連鎖を生み出した歴史的転換点。", 
+                requiredStage: 3 
+            },
+            { 
+                title: "横浜船渠 (ドックの記憶)", 
+                body: "【インフラ歴史アーカイブ】\n明治期から日本の近代造船を支え続けた巨大なドライドックの遺構。分厚い石積みの壁面は、数千トンの巨艦を支えるために人知れず高度な力学計算のもとで構築された。\nその歴史の深層には、単なる民間商船の建造にとどまらない、国家の威信をかけた特異な海洋プロジェクトの記憶が幾重にも塗り込められている。", 
+                requiredStage: 3 
+            }
+        ];
+
+        const fuse = new Fuse(browserDatabaseList, {
+            keys: ['title', 'body'],
+            includeScore: true,
+            threshold: 0.4,
+            ignoreLocation: true
+        });
 
         const spyRoute = [
             [35.4500, 139.6500], [35.4480, 139.6480], [35.4460, 139.6450], [35.4450, 139.6400]
@@ -321,6 +569,7 @@
         ];
 
         let spyIconNormal, spyIconStopped;
+        let globalAudioCtx = null;
 
         window.addEventListener('DOMContentLoaded', () => {
             map = L.map('map', {
@@ -378,30 +627,274 @@
         function finishIntroVideo() {
             const introElem = document.getElementById('page-intro-video');
             const welcomeElem = document.getElementById('page-welcome');
-            
             if (introElem) introElem.style.display = 'none';
             if (welcomeElem) welcomeElem.style.display = 'flex';
         }
 
+        function executeBrowserSearch() {
+            const query = document.getElementById('browser-keyword-input').value.trim();
+            const resultCard = document.getElementById('browser-result-container');
+            const urlBar = document.getElementById('browser-url-input');
+
+            if (!query) {
+                resultCard.innerHTML = '<span style="color:#ff5555;">[ERROR] 検索キーワードを入力してください。</span>';
+                return;
+            }
+
+            urlBar.value = `yokohama-legacy.hq/archive/search?q=${encodeURI(query)}`;
+
+            const searchResults = fuse.search(query);
+            const accessibleResults = searchResults.filter(res => res.item.requiredStage <= maxClearedStage);
+
+            if (accessibleResults.length > 0) {
+                let html = `<strong style="color:#0ff;">[SEARCH QUERY: "${query}"] 該当件数: ${accessibleResults.length}件</strong><br><br>`;
+                accessibleResults.forEach((res) => {
+                    let item = res.item;
+                    html += `<div style="border-left: 2px solid #0ff; padding-left: 10px; margin-bottom: 20px;">`;
+                    html += `<strong style="color:#0f0; font-size:14px;">■ ${item.title}</strong><br><br>`;
+                    html += `<span style="white-space: pre-wrap; color:#ccc; line-height:1.6;">${item.body}</span>`;
+                    html += `</div>`;
+                });
+                resultCard.innerHTML = html;
+            } else {
+                let anyMatch = searchResults.length > 0;
+                if (anyMatch) {
+                    resultCard.innerHTML = `<strong style="color:#ff5555;">[ACCESS DENIED: LEVEL RESTRICTED]</strong><br><br>キーワード "${query}" に関連する機密データが検知されましたが、現在のエージェント権限では閲覧が制限されています。（ミッションを進めて権限を昇格させてください）`;
+                } else {
+                    resultCard.innerHTML = `<strong style="color:#ff5555;">[NO MATCH FOUND]</strong><br><br>キーワード "${query}" に一致する機密データは見つかりませんでした。`;
+                }
+            }
+        }
+
+        function playRadioSound() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    const ctx = globalAudioCtx || new AudioCtx();
+                    if (ctx.state === 'suspended') ctx.resume();
+
+                    let now = ctx.currentTime;
+                    let osc = ctx.createOscillator();
+                    let gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(1200, now);
+                    osc.frequency.setValueAtTime(1800, now + 0.1);
+                    
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.001, now + 0.25);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+
+                    let bufferSize = ctx.sampleRate * 0.4;
+                    let buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                    let data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                    let noise = ctx.createBufferSource();
+                    noise.buffer = buffer;
+
+                    let noiseGain = ctx.createGain();
+                    noiseGain.gain.setValueAtTime(0.15, now + 0.25);
+                    noiseGain.gain.linearRampToValueAtTime(0.001, now + 0.65);
+
+                    let filter = ctx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.value = 1500;
+
+                    noise.connect(filter);
+                    filter.connect(noiseGain);
+                    noiseGain.connect(ctx.destination);
+
+                    noise.start(now + 0.25);
+                }
+            } catch(e) {
+                console.warn("Radio sound failed:", e);
+            }
+        }
+
+        function showHqRadioDirect(message, freq = "FREQ: 142.2 - HQ_SECURE", unlockStage = null) {
+            pendingUnlockStage = unlockStage;
+            playRadioSound();
+
+            const overlay = document.getElementById('hq-radio-overlay');
+            const msgElem = document.getElementById('hq-radio-msg');
+            const freqElem = document.getElementById('hq-radio-freq');
+            if (overlay && msgElem) {
+                msgElem.innerText = message;
+                freqElem.innerText = freq;
+                overlay.style.display = 'flex';
+            }
+
+            const timeStr = new Date().toTimeString().split(' ')[0];
+            radioLogs.push({ time: timeStr, freq: freq, message: message });
+            updateRadioLogUI();
+        }
+
+        function showHqRadioWithDelay(message, freq = "FREQ: 142.2 - HQ_SECURE", unlockStage = null, delayMs = 0) {
+            if (delayMs > 0) {
+                setTimeout(() => {
+                    showHqRadioDirect(message, freq, unlockStage);
+                }, delayMs);
+            } else {
+                showHqRadioDirect(message, freq, unlockStage);
+            }
+        }
+
+        function closeHqRadio() {
+            const overlay = document.getElementById('hq-radio-overlay');
+            if (overlay) overlay.style.display = 'none';
+
+            if (pendingUnlockStage !== null) {
+                const stageNum = pendingUnlockStage;
+                
+                if (stageNum > maxClearedStage) {
+                    maxClearedStage = stageNum;
+                }
+
+                const secretTextElem = document.getElementById(`secret-text-${stageNum}`);
+                const secretBoxElem = document.getElementById(`secret-box-${stageNum}`);
+                if (secretTextElem && secretBoxElem) {
+                    secretTextElem.innerText = secretStories[stageNum];
+                    secretBoxElem.style.opacity = "1.0";
+                }
+
+                if (stageNum === 5) {
+                    setTimeout(() => {
+                        switchPage('page-congrats');
+                    }, 2000);
+                }
+
+                pendingUnlockStage = null;
+            }
+        }
+
+        function checkPuzzle(stageNum) {
+            const inputElem = document.getElementById(`puzzle-input-${stageNum}`);
+            const userVal = inputElem ? inputElem.value.trim().toLowerCase() : "";
+            const correctVal = puzzleAnswers[stageNum];
+
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) loadingOverlay.style.display = 'flex';
+
+            setTimeout(() => {
+                if (loadingOverlay) loadingOverlay.style.display = 'none';
+
+                if (userVal === correctVal) {
+                    let radioMsg = "";
+                    if (stageNum === 1) {
+                        radioMsg = "最初のデータ照合完了だ。研究所は設立当初、民間船舶の最先端研究機関だったが、途中から潜水艦技術（プロジェクト・オメガ）の極秘研究へ変質させられていった歴史が浮かび上がった[cite: 3]。";
+                    } else if (stageNum === 2) {
+                        radioMsg = "見事だ！現地ではなく『パンフレットの透かし』に気づいたな[cite: 3]。敵が狙っているのは……『オメガ・ブループリント』だ[cite: 3]。";
+                    } else if (stageNum === 3) {
+                        radioMsg = "航海日誌の謎を解き、導き出された数字の意味が判明した[cite: 3]。フットスタンプに立ち、その時間（2時の方向）を望むことでゴール地点が完全に確定した。最終目的地へ急げ[cite: 3]！";
+                    } else if (stageNum === 4) {
+                        radioMsg = "ログの矛盾を完全に突いた[cite: 3]。組織の内部に潜む裏切り者（内通者）の正体が絞り込まれたぞ……[cite: 3]！";
+                    } else if (stageNum === 5) {
+                        radioMsg = "見事だエージェント[cite: 3]！ 岡本正造の真意を暴き、国家の危機を救い出したぞ[cite: 3]。すべてのデータが保護された[cite: 3]。お前の勝利だ、直ちに帰還せよ[cite: 3]！";
+                    }
+
+                    showHqRadioWithDelay(radioMsg, "FREQ: 142.2 - HQ_SECURE", stageNum, 1500);
+
+                } else {
+                    showCustomDialog("ACCESS拒否：不正なキーです。正しい解読キーを入力してください。");
+                }
+            }, 1200);
+        }
+
+        function startEpilogueAnimation() {
+            if (epilogueTimer) clearTimeout(epilogueTimer);
+
+            for (let i = 0; i <= 5; i++) {
+                let p = document.getElementById(`ep-p${i}`);
+                if (p) p.classList.remove('show');
+            }
+            document.getElementById('ep-footer').style.opacity = 0;
+
+            let currentPara = 0;
+            function showNext() {
+                if (currentPara <= 5) {
+                    let p = document.getElementById(`ep-p${currentPara}`);
+                    if (p) p.classList.add('show');
+                    currentPara++;
+                    epilogueTimer = setTimeout(showNext, 1200);
+                } else {
+                    document.getElementById('ep-footer').style.opacity = 1;
+                }
+            }
+            showNext();
+        }
+
+        function updateRadioLogUI() {
+            const container = document.getElementById('radio-log-container');
+            if (!container) return;
+
+            if (radioLogs.length === 0) {
+                container.innerHTML = '<p style="color: #666; font-size: 12px;">まだ受信した通信はありません。</p>';
+                return;
+            }
+
+            let html = "";
+            radioLogs.forEach((log, index) => {
+                html += `
+                    <div class="radio-log-card">
+                        <div style="color: #888; border-bottom: 1px dashed #030; padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                            <span>[${index + 1}] ${log.freq}</span>
+                            <span>${log.time}</span>
+                        </div>
+                        <div style="color: #0f0; white-space: pre-wrap;">${log.message}</div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
         function requestPermissionsAndStart() {
-            startTime = Date.now();
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    globalAudioCtx = new AudioCtx();
+                    if (globalAudioCtx.state === 'suspended') globalAudioCtx.resume();
+                    let dummyOsc = globalAudioCtx.createOscillator();
+                    let dummyGain = globalAudioCtx.createGain();
+                    dummyGain.gain.setValueAtTime(0.001, globalAudioCtx.currentTime);
+                    dummyOsc.connect(dummyGain);
+                    dummyGain.connect(globalAudioCtx.destination);
+                    dummyOsc.start();
+                    dummyOsc.stop(globalAudioCtx.currentTime + 0.05);
+                }
+            } catch (e) {
+                console.warn("Audio Context initialization failed:", e);
+            }
 
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
+                navigator.geolocation.watchPosition(
                     (pos) => {
                         currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                         if (myMarker) myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
-                        if (map) map.setView([currentMyPos.lat, currentMyPos.lng], 16);
-                        isFirstLocationFix = false;
+                        if (isFirstLocationFix && map) {
+                            map.setView([currentMyPos.lat, currentMyPos.lng], 16);
+                            isFirstLocationFix = false;
+                        }
+                        const myPosElem = document.getElementById('my-pos-text');
+                        if (myPosElem) myPosElem.innerText = `現在地: 緯度 ${currentMyPos.lat.toFixed(4)}, 経度 ${currentMyPos.lng.toFixed(4)}`;
                     },
-                    (err) => {
-                        console.warn("位置情報の取得が拒否されました:", err.message);
-                    },
-                    { enableHighAccuracy: true }
+                    (err) => { console.warn("位置情報の取得に失敗しました:", err.message); },
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
                 );
+
+                startTime = Date.now();
+                document.getElementById('page-welcome').style.display = 'none';
+                switchPage('page-home');
+
+                showHqRadioWithDelay("こちら司令部。エージェント、作戦区域への潜入を確認した。\n手記と端末を駆使し、岡本正造が遺した機密データがあの国の手に渡るのを何としても阻止するのだ。\n制限時間は2時間。周囲の安全を最優先にしつつ、最初のチェックポイントへ急げ。", "FREQ: 142.2 - HQ_SECURE", null, 0);
+
+            } else {
+                showCustomDialog("お使いのブラウザは位置情報サービスに対応していません。");
             }
-            document.getElementById('page-welcome').style.display = 'none';
-            switchPage('page-home');
         }
 
         function toggleMenu() {
@@ -425,11 +918,19 @@
                 setTimeout(() => { map.invalidateSize(); }, 100);
             }
 
+            if (pageId === 'page-epilogue') {
+                startEpilogueAnimation();
+            }
+
             const titles = {
                 'page-home': '作戦司令室',
                 'page-map': '追跡モニター（マップ）',
                 'page-hack': 'ハッキング端末',
-                'page-puzzle': 'ミッションファイル'
+                'page-puzzle': 'ミッションファイル',
+                'page-browser': '調査ブラウザ (HQ Terminal)',
+                'page-radiolog': '司令部通信ログ',
+                'page-congrats': '作戦完了 (MISSION COMPLETE)',
+                'page-epilogue': '作戦完了・後日談'
             };
             document.getElementById('header-title').innerText = titles[pageId] || '作戦司令室';
         }
@@ -442,14 +943,13 @@
             buttons.forEach(b => b.classList.remove('active-puzzle'));
 
             const targetPuzzle = document.getElementById(puzzleId);
-            if (targetPuzzle) {
-                targetPuzzle.classList.add('active-puzzle');
-            }
-            if (btnElement) {
-                btnElement.classList.add('active-puzzle');
-            }
+            if (targetPuzzle) targetPuzzle.classList.add('active-puzzle');
+            if (btnElement) btnElement.classList.add('active-puzzle');
         }
 
+        /* ==========================================
+           9. ハッキング・パケット解析システム
+           ========================================== */
         const streamLogs = [
             "INITIATING_SECURE_SOCKET_LAYER... [OK]",
             "CONNECT 192.168.10.55:443 - ENCRYPTION_AES256",
@@ -509,7 +1009,6 @@
                     p.className = 'stream-line';
                     p.innerText = "> " + streamLogs[logIndex];
                     terminal.appendChild(p);
-                    
                     terminal.scrollTop = terminal.scrollHeight;
                     logIndex++;
 
@@ -543,9 +1042,7 @@
 
         function closeCustomDialog() {
             const overlay = document.getElementById('custom-dialog-overlay');
-            if (overlay) {
-                overlay.style.display = 'none';
-            }
+            if (overlay) overlay.style.display = 'none';
         }
 
         function startHack() {
@@ -586,6 +1083,8 @@
                     document.getElementById('hack-result').innerHTML = 
                         "<span style='color:#f00;'>ACCESS GRANTED: 敵システム停止完了。</span>";
 
+                    showHqRadioWithDelay("見事だ。敵のメインシステムを停止させた。\nこれで油断することなく、最後まで慎重に活動せよ。", "FREQ: 142.2 - HQ_SECURE", null, 1500);
+
                     setTimeout(() => {
                         isHacked = false;
 
@@ -599,24 +1098,28 @@
                         document.getElementById('banner-text').innerHTML = "敵のバックアップ回路が起動！<br>スパイが活動を再開しました！";
                         if (banner) {
                             banner.style.display = 'block';
-                            setTimeout(() => {
-                                banner.style.display = 'none';
-                            }, 11000);
+                            setTimeout(() => { banner.style.display = 'none'; }, 11000);
                         }
 
                         triggerAlertEffects();
+
+                        showHqRadioWithDelay("警告！ 敵のバックアップ回路が強制起動した！\n奴らのシステムが復旧し、スパイが再び逃走を始めたぞ。\n追跡を続け、次の手を打て！", "⚠️ SYSTEM RESTORED - HQ", null, 4000);
 
                     }, 30000);
                 }
             }, 30);
         }
 
+        /* ==========================================
+           10. アラート音声＆視覚効果（Web Audio API）
+           ========================================== */
         function triggerAlertEffects() {
             const overlay = document.getElementById('alert-overlay');
             try {
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 if (AudioCtx) {
-                    const ctx = new AudioCtx();
+                    const ctx = globalAudioCtx || new AudioCtx();
+                    if (ctx.state === 'suspended') ctx.resume();
                     
                     for (let setIdx = 0; setIdx < 3; setIdx++) {
                         let setTimeOffset = setIdx * 3.8;
@@ -624,29 +1127,32 @@
                         setTimeout(() => {
                             if (overlay) {
                                 overlay.classList.add('flashing');
-                                setTimeout(() => {
-                                    overlay.classList.remove('flashing');
-                                }, 3000);
+                                setTimeout(() => { overlay.classList.remove('flashing'); }, 3000);
                             }
                         }, setTimeOffset * 1000);
 
                         for (let i = 0; i < 3; i++) {
                             let startTime = ctx.currentTime + setTimeOffset + (i * 1.0);
-                            
-                            let osc = ctx.createOscillator();
+                            let osc1 = ctx.createOscillator();
+                            let osc2 = ctx.createOscillator();
                             let gain = ctx.createGain();
+
+                            osc1.type = 'sine';
+                            osc2.type = 'square';
+                            osc1.frequency.setValueAtTime(60, startTime);
+                            osc2.frequency.setValueAtTime(60, startTime);
                             
-                            osc.type = 'sawtooth';
-                            osc.frequency.setValueAtTime(100, startTime);
+                            gain.gain.setValueAtTime(0.4, startTime + 0.8);
+                            gain.gain.linearRampToValueAtTime(0.001, startTime + 0.9);
                             
-                            gain.gain.setValueAtTime(0.4, startTime);
-                            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.9);
-                            
-                            osc.connect(gain);
+                            osc1.connect(gain);
+                            osc2.connect(gain);
                             gain.connect(ctx.destination);
-                            
-                            osc.start(startTime);
-                            osc.stop(startTime + 0.9);
+    
+                            osc1.start(startTime);
+                            osc2.start(startTime);
+                            osc1.stop(startTime + 1.0);
+                            osc2.stop(startTime + 1.0);
                         }
                     }
                 }
@@ -655,25 +1161,9 @@
             }
         }
 
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition((pos) => {
-                currentMyPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                if (myMarker) {
-                    myMarker.setLatLng([currentMyPos.lat, currentMyPos.lng]);
-                }
-
-                if (isFirstLocationFix && map) {
-                    map.setView([currentMyPos.lat, currentMyPos.lng], 16);
-                    isFirstLocationFix = false;
-                }
-
-                const myPosElem = document.getElementById('my-pos-text');
-                if (myPosElem) {
-                    myPosElem.innerText = `現在地: 緯度 ${currentMyPos.lat.toFixed(4)}, 経度 ${currentMyPos.lng.toFixed(4)}`;
-                }
-            }, null, { enableHighAccuracy: true });
-        }
-
+        /* ==========================================
+           11. 位置情報追跡 ＆ メインループタイマー
+           ========================================== */
         function panToMyPosition() {
             if (currentMyPos.lat !== 0 && map) {
                 map.panTo([currentMyPos.lat, currentMyPos.lng]);
@@ -701,12 +1191,12 @@
                 document.getElementById('banner-text').innerHTML = "敵の潜伏を確認！<br>スパイが移動を開始しました！";
                 if (banner) {
                     banner.style.display = 'block';
-                    setTimeout(() => {
-                        banner.style.display = 'none';
-                    }, 11000);
+                    setTimeout(() => { banner.style.display = 'none'; }, 11000);
                 }
 
                 triggerAlertEffects();
+
+                showHqRadioWithDelay("警告！ あの国のスパイが潜伏場所から移動を開始した！\n現在、横浜港湾エリアのルートを移動中だ。\n我々のモニターとシグナルを頼りに、任務に挑め！", "⚠️ EMERGENCY BROADCAST - HQ", null, 4000);
             }
 
             if (isSpyActive && !isHacked && enemyMarker) {
@@ -802,67 +1292,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-function triggerAlertEffects() {
-            const overlay = document.getElementById('alert-overlay');
-            try {
-                const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                if (AudioCtx) {
-                    const ctx = new AudioCtx();
-                    
-                    for (let setIdx = 0; setIdx < 3; setIdx++) {
-                        let setTimeOffset = setIdx * 3.8;
-
-                        setTimeout(() => {
-                            if (overlay) {
-                                overlay.classList.add('flashing');
-                                setTimeout(() => {
-                                    overlay.classList.remove('flashing');
-                                }, 3000);
-                            }
-                        }, setTimeOffset * 1000);
-
-                        for (let i = 0; i < 3; i++) {
-                            let startTime = ctx.currentTime + setTimeOffset + (i * 1.0);
-                            
-                             // 💡 工夫1: 音を太くするため、2つのオシレータを同時に作ります
-                            let osc1 = ctx.createOscillator();
-                            let osc2 = ctx.createOscillator();
-                            let gain = ctx.createGain();
-
-                            // 最もジリジリした倍音が含まれる「のこぎり波」を使用
-                            osc1.type = 'sine';
-                            osc2.type = 'square';
-
-                            // 60Hz
-                            osc1.frequency.setValueAtTime(60, startTime);
-                            osc2.frequency.setValueAtTime(60, startTime);
-                            
-                            // 💡 工夫3: ブザー独特の「ブツッ」とした荒々しい切れ味
-                            // gain.gain.setValueAtTime(0.4, startTime); 
-                            // 1秒間の終わりの方に、わずか0.05秒で急激に音量を落とす（フェードアウトをほぼ作らない）
-                            gain.gain.setValueAtTime(0.4, startTime + 0.8);
-                            gain.gain.linearRampToValueAtTime(0.001, startTime + 0.9);
-                            
-                            // 2つのオシレータを同じ1つのボリューム（gain）にまとめる
-                            osc1.connect(gain);
-                            osc2.connect(gain);
-                            gain.connect(ctx.destination);
-    
-                            // 同時にスタートして、同時にストップ
-                            osc1.start(startTime);
-                            osc2.start(startTime);
-                                                
-                            osc1.stop(startTime + 1.0);
-                            osc2.stop(startTime + 1.0);
-
-                        }
-                    }
-                }
-            } catch (e) {
-                console.warn("Audio alarm failed:", e);
-            }
-        }
